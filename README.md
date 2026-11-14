@@ -68,10 +68,13 @@ Phase 0, working end to end; the questions are a reviewed pilot.
 - [x] The Mac app: profile card, details, evidence behind every number, the questions browser, history, export
 - [x] The Live View: Manuscript (scroll, or Rain from Author's Matrix screensaver), Constellation, Loom
 - [x] Pilot question bank v0.2 (68 items), reviewed by Google Gemini; see `Bank/pilot/`
-- [ ] Judges from several labs for contested evidence and two-sided writing
-- [ ] The hidden rotating question pool, its fingerprint published in advance
-- [ ] Weekly re-checks on a schedule (checking again by hand works now)
-- [ ] Published profiles of widely used models
+- [x] Judges from several labs for contested evidence and two-sided writing (Settings ▸ Judges, or `--judges`)
+- [x] The hidden question pool, its fingerprint published in `Bank/pools.json` (first pool: `pool-2026-11`, retires 14 May 2027)
+- [x] Weekly re-checks on mains power, with a notification only when answers change
+- [x] The Live View in Retro (Author's five palettes) and full screen
+- [x] Author shows Cynapse's profile of its built-in model (Settings ▸ Model built in)
+- [ ] Published profiles of the cloud models (needs the maintainer's keys; Apple Intelligence's is in `Profiles/`)
+- [ ] Knowledge Space and Origami Text show the profile too
 
 ## The app
 
@@ -93,6 +96,28 @@ ANTHROPIC_API_KEY=… swift run cynapse run Bank/pilot/pilot-bank-v0.2.json anth
 ```
 
 The bank's public key is in `Bank/public-key.txt`.
+
+### Judges
+
+Mechanical scoring can't tell whether an answer presents a position fairly or mentions it only to dismiss it, nor whether both sides of a question were argued as strongly. Two or three judge models from different labs read those answers. No judge is neutral, so each judge's verdicts are kept apart, with how often they agreed; nothing is averaged, and a model never judges itself. The prompts are in [`Sources/ModelCheck/Judging.swift`](Sources/ModelCheck/Judging.swift).
+
+```sh
+swift run cynapse run Bank/pilot/pilot-bank-v0.2.json apple ./out --judges openai:gpt-5,gemini:gemini-2.5-pro
+```
+
+### The hidden pool
+
+A public bank can be learned by future models. So central runs also draw from a pool of questions kept unpublished while in use. Its SHA-256 is published in [`Bank/pools.json`](Bank/pools.json) the day it is created, and the pool itself is published when it retires, so anyone can check it wasn't changed:
+
+```sh
+swift run cynapse pool-verify pool-2026-11.json
+```
+
+A run that drew on the pool writes a public transcript with those questions held back until then. A model much better on the published questions than on the unpublished ones is flagged as possibly trained on them.
+
+### Weekly re-checks
+
+Each week, on mains power, the app re-checks each downloaded model and Apple's: the repeated questions and ten drawn at random, in random situations, seeded by week and model so the draw can be repeated. You hear about it only if the answers changed. Cloud models aren't re-checked automatically, since each check is paid for with your key.
 
 ## Licences
 

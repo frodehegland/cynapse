@@ -66,9 +66,15 @@ enum ProfileStore {
         }
         if let shared = ModelLibrary.sharedProfilesFolder {
             try? FileManager.default.createDirectory(at: shared, withIntermediateDirectories: true)
-            try? profile.jsonData().write(to: shared.appendingPathComponent("\(entry.storeKey).modelcheck.json"))
+            // Named by the model's name ("org--name"), the name Author and
+            // Knowledge Space know it by.
+            try? profile.jsonData().write(to: shared.appendingPathComponent("\(sharedName(entry)).modelcheck.json"))
         }
         return stored
+    }
+
+    static func sharedName(_ entry: ModelEntry) -> String {
+        entry.name.replacingOccurrences(of: "/", with: "--")
     }
 
     static func records(of stored: StoredProfile) -> [Record] {

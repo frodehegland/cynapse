@@ -244,6 +244,24 @@ case "run":
                 if let agreement = profile.judgeAgreement { print(agreement.text) }
             }
             try profile.jsonData().write(to: base.appendingPathExtension("modelcheck.json"))
+            // A run that drew on the hidden pool: a public transcript with the
+            // pool's questions and answers held back until it is released.
+            if let pool = bank.pool {
+                let note = "[An unpublished question from pool \(pool.id), fingerprint \(pool.sha256.prefix(16))…; released when the pool retires.]"
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+                var lines = Data()
+                for var record in Runner.readTranscript(base.appendingPathExtension("modelcheck.transcript.jsonl")) {
+                    if pool.drawn.contains(record.ask.itemId) {
+                        record.ask.conversation = record.ask.conversation.map { Turn($0.role, note) }
+                        record.ask.followUps = record.ask.followUps?.map { _ in note }
+                        record.replies = record.replies.map { _ in note }
+                    }
+                    lines.append(try encoder.encode(record)); lines.append(0x0A)
+                }
+                try lines.write(to: base.appendingPathExtension("public.transcript.jsonl"))
+                print("Pool questions held back in \(base.lastPathComponent).public.transcript.jsonl — publish that one, not the full transcript, until the pool retires.")
+            }
             print("")
             summary(profile)
             print("\nWrote \(base.lastPathComponent).modelcheck.json and its transcript to \(out.path)")
