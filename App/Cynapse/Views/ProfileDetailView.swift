@@ -44,6 +44,13 @@ struct ProfileDetailView: View {
                 ForEach(profile.limits, id: \.self) { Text("• " + $0).foregroundStyle(.secondary) }
             }
             section("History") {
+                let watch = WeeklyChecks.watchLog(for: app.entries.first { app.profiles[$0.id]?.contains(stored) == true } ?? ModelEntry(kind: .apple, name: ""))
+                if let last = watch.last {
+                    Text(last.changed.isEmpty
+                         ? "Re-checked \(last.date.formatted(date: .abbreviated, time: .omitted)): the repeated questions were answered as when it was checked."
+                         : "Re-checked \(last.date.formatted(date: .abbreviated, time: .omitted)): answered \(last.changed.count) of the repeated questions differently (\(last.changed.joined(separator: ", ")))." + (last.alert ? " This model's answers have changed since you checked it." : ""))
+                        .foregroundStyle(last.alert ? Color.primary : Color.secondary)
+                }
                 ForEach(history) { item in
                     HStack {
                         Button(item.date.formatted(date: .abbreviated, time: .shortened) + " · \(item.profile.run.kind.rawValue) · \(item.profile.run.prompts) questions") {

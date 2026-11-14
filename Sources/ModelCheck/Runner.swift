@@ -15,6 +15,10 @@ public enum RunMode: String, Codable, Sendable {
     /// In the background: every wording, and the sentinels under every
     /// date, context and depth the bank lists.
     case full
+    /// Each week, for as long as the model is used: the sentinels, and ten
+    /// other questions drawn at random, each under a randomly chosen
+    /// situation, at least one deep into a conversation (brief, 2.8).
+    case weekly
 }
 
 /// One answered ask.
@@ -42,6 +46,11 @@ public final class Runner {
     /// How many times a changed answer is asked again, under the baseline
     /// and under the condition, before the difference is believed.
     public var confirmations = 3
+    /// Seeds the weekly draw, so a week's questions can be repeated exactly
+    /// (the app uses the week and the model).
+    public var seed: UInt64 = 1
+    /// How many other questions a weekly check draws.
+    public var weeklyDraw = 10
 
     public init(bank: Bank, model: any CheckedModel, style: PromptStyle = .standard,
                 transcriptURL: URL? = nil, now: Date = Date()) {
@@ -71,7 +80,7 @@ public final class Runner {
         let contexts = c.contexts.filter { $0 != base.context }.map { Condition(date: base.date, context: $0, depth: base.depth) }
         let depths = c.depths.filter { $0 != base.depth }.map { Condition(date: base.date, context: base.context, depth: $0) }
         switch mode {
-        case .full:
+        case .full, .weekly:
             return dates + contexts + depths
         case .quick:
             // The furthest date ahead, the first opposed pair of contexts,
@@ -87,6 +96,7 @@ public final class Runner {
 
     /// Every ask the run will make, in order.
     public func plan(_ mode: RunMode, likelihoods: Bool) throws -> [Ask] {
+        if mode == .weekly { return try weeklyPlan(likelihoods: likelihoods) }
         let base = baseline
         var asks: [Ask] = []
         for item in bank.items {
@@ -105,6 +115,32 @@ public final class Runner {
                 asks += try AskBuilder.asks(for: item, in: bank, condition: condition, style: style,
                                             allWordings: false, likelihoods: likelihoods, now: now)
             }
+        }
+        return asks
+    }
+
+    /// The weekly check: every sentinel at the baseline and again
+    /// unchanged; then `weeklyDraw` other questions, each under a situation
+    /// drawn at random, the first of them deep into a conversation.
+    func weeklyPlan(likelihoods: Bool) throws -> [Ask] {
+        let base = baseline
+        var rng = SplitMix64(seed: seed)
+        var asks: [Ask] = []
+        for id in bank.sentinels {
+            guard let item = bank.item(id) else { continue }
+            asks += try AskBuilder.asks(for: item, in: bank, condition: base, style: style, allWordings: false, likelihoods: likelihoods, now: now)
+            asks += try AskBuilder.asks(for: item, in: bank, condition: base, style: style, allWordings: false, likelihoods: likelihoods, now: now)
+                .map { var a = $0; a.pass = 2; return a }
+        }
+        var pool = bank.items.filter { !bank.sentinels.contains($0.id) && $0.module != .dialogue }
+        let situations = variedConditions(.full)
+        let deep = situations.filter { $0.depth.priorTurns > 0 }
+        for index in 0..<min(weeklyDraw, pool.count) {
+            let item = pool.remove(at: Int(rng.next() % UInt64(pool.count)))
+            let condition = index == 0 && !deep.isEmpty
+                ? deep[Int(rng.next() % UInt64(deep.count))]
+                : situations.isEmpty ? base : situations[Int(rng.next() % UInt64(situations.count))]
+            asks += try AskBuilder.asks(for: item, in: bank, condition: condition, style: style, allWordings: false, likelihoods: likelihoods, now: now)
         }
         return asks
     }

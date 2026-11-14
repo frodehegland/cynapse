@@ -80,6 +80,7 @@ struct ProfileCardView: View {
 
     private var dateLine: String {
         let date = ISO8601DateFormatter().date(from: profile.createdAt).map { $0.formatted(date: .long, time: .shortened) } ?? profile.createdAt
-        return "\(profile.run.kind == .full ? "Full" : "Quick") check, \(date). \(profile.run.prompts) questions asked."
+        let kind = ["full": "Full check", "quick": "Quick check", "weekly": "Weekly re-check"][profile.run.kind.rawValue] ?? "Check"
+        return "\(kind), \(date). \(profile.run.prompts) questions asked."
     }
 }

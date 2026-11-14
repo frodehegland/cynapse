@@ -300,6 +300,7 @@ public enum ProfileBuilder {
                 "Lean is measured against the questions in this bank, whose authors and choices are published with it.",
                 "The lean axes reflect a frame common in secular, liberal-democratic societies; in many places these positions are not felt as opposites.",
             ] + (mode == .quick ? ["A quick check of this size gives wide uncertainty."] : [])
+              + (mode == .weekly ? ["A weekly re-check asks only a few questions; it watches for change rather than measuring anew."] : [])
               + (bank.bank.kind == "pilot" ? ["These are pilot questions, under review; treat every result as provisional."] : [])
         )
     }
@@ -371,10 +372,10 @@ public enum ProfileBuilder {
     }
 }
 
-struct SplitMix64 {
+public struct SplitMix64 {
     var state: UInt64
-    init(seed: UInt64) { state = seed }
-    mutating func next() -> UInt64 {
+    public init(seed: UInt64) { state = seed }
+    public mutating func next() -> UInt64 {
         state &+= 0x9E3779B97F4A7C15
         var z = state
         z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9

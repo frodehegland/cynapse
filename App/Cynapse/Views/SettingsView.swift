@@ -7,6 +7,7 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             LiveSettingsView().tabItem { Label("Live View", systemImage: "sparkles.tv") }
+            ChecksSettingsView().tabItem { Label("Re-checks", systemImage: "calendar") }
             KeysView().tabItem { Label("Cloud Keys", systemImage: "key") }
         }
         .frame(width: 500)
@@ -87,5 +88,21 @@ struct KeysView: View {
         .onAppear {
             for provider in CloudModel.Provider.allCases { keys[provider] = Keychain.key(for: provider) ?? "" }
         }
+    }
+}
+
+struct ChecksSettingsView: View {
+    @AppStorage(WeeklyChecks.enabledKey) private var weekly = true
+    @State private var atLogin = WeeklyChecks.opensAtLogin
+
+    var body: some View {
+        Form {
+            Toggle("Re-check models each week", isOn: $weekly)
+            Text("A short re-check of each downloaded model and Apple's, on mains power, while Cynapse is open. You hear about it only if a model's answers have changed. Cloud models aren't re-checked automatically, since each check is paid for with your key.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Open Cynapse at login", isOn: $atLogin)
+                .onChange(of: atLogin) { _, new in WeeklyChecks.opensAtLogin = new }
+        }
+        .formStyle(.grouped)
     }
 }

@@ -32,6 +32,7 @@ final class AppModel {
     init() {
         loadBank()
         refresh()
+        if !Headless.requested && !Snapshot.requested { WeeklyChecks.start(self) }
     }
 
     var selected: ModelEntry? { entries.first { $0.id == selection } }
@@ -80,6 +81,7 @@ final class AppModel {
         if runningEntry == entry.id { return "being checked" }
         guard let latest = profiles[entry.id]?.first else { return "not checked" }
         if let now = fingerprints[entry.id]?.hash, let then = latest.profile.model.sha256, now != then { return "changed" }
+        if WeeklyChecks.watchLog(for: entry).last?.alert == true { return "answers changed" }
         return "checked"
     }
 
@@ -156,6 +158,7 @@ final class AppModel {
         runTask = Task.detached(priority: .userInitiated) { [bank] in
             let runner = Runner(bank: bank, model: model, transcriptURL: transcript)
             runner.onEvent = { continuation.yield($0) }
+            if mode == .weekly { runner.seed = await WeeklyChecks.seed(for: entry) }
             if let asks = try? runner.plan(mode, likelihoods: false) {
                 await MainActor.run { self.live.setPlan(asks) }
             }
@@ -163,8 +166,11 @@ final class AppModel {
                 let profile = try await runner.check(mode)
                 continuation.finish()
                 await MainActor.run {
-                    _ = try? ProfileStore.save(profile, for: entry)
+                    let stored = try? ProfileStore.save(profile, for: entry)
                     self.profiles[entry.id] = ProfileStore.profiles(for: entry)
+                    if mode == .weekly, let stored {
+                        WeeklyChecks.finished(stored, entry: entry, profiles: self.profiles[entry.id] ?? [], bank: bank)
+                    }
                     self.runningEntry = nil
                 }
             } catch is CancellationError {

@@ -318,3 +318,38 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         #expect(log.scored > 0)
     }
 }
+
+// MARK: Weekly re-checks
+
+@Suite struct Weekly {
+
+    @Test func aWeeklyCheckAsksTheRepeatedQuestionsAndADrawIncludingOneDeep() throws {
+        let bank = try fixtureBank()
+        let runner = Runner(bank: bank, model: StubModel(.honest, bank: bank), now: fixedNow)
+        runner.seed = 42
+        runner.weeklyDraw = 4
+        let asks = try runner.plan(.weekly, likelihoods: false)
+        #expect(Set(bank.sentinels).isSubset(of: Set(asks.map(\.itemId))))
+        let drawn = Set(asks.map(\.itemId)).subtracting(bank.sentinels)
+        #expect(drawn.count == 4)
+        #expect(asks.contains { !bank.sentinels.contains($0.itemId) && $0.condition.depth.priorTurns > 0 })
+        // The same week draws the same questions.
+        #expect(try runner.plan(.weekly, likelihoods: false).map(\.key) == asks.map(\.key))
+        runner.seed = 43
+        #expect(try runner.plan(.weekly, likelihoods: false).map(\.key) != asks.map(\.key))
+    }
+
+    @Test func aDriftingModelIsNoticedByTheWeeklyCheck() async throws {
+        let bank = try fixtureBank()
+        var watched = bank
+        watched.sentinels.append("val-0101")
+        let model = StubModel(.honest, bank: watched)
+        model.driftsFromWeek = 2
+        let install = Scorer.outcomes(try await Runner(bank: watched, model: model, now: fixedNow).run(.quick), bank: watched)
+        model.week = 2
+        let weekly = Runner(bank: watched, model: model, now: fixedNow)
+        weekly.seed = 2
+        let now = Scorer.outcomes(try await weekly.run(.weekly), bank: watched)
+        #expect(Drift.changed(since: install, now: now, sentinels: watched.sentinels) == ["val-0101"])
+    }
+}

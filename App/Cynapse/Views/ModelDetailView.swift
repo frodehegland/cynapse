@@ -11,7 +11,10 @@ struct ModelDetailView: View {
     @State private var evidence: Evidence?
 
     var body: some View {
-        let stored = shown ?? app.profiles[entry.id]?.first
+        // The card keeps the last full or quick check; weekly re-checks are
+        // listed in History.
+        let all = app.profiles[entry.id] ?? []
+        let stored = shown ?? all.first { $0.profile.run.kind != .weekly } ?? all.first
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
