@@ -8,25 +8,54 @@
 // soft neutral white. When the same question is asked again in another
 // situation, its answers are joined to one another, so repeated questions
 // grow into small webs; neighbouring questions are threaded together. The
-// whole network turns slowly in depth. In Retro, the questions take the
-// palette's colour; the ratings keep theirs, since they carry meaning.
+// whole network turns slowly in depth; dragging turns it by hand, and it
+// takes up its own slow turn again a few seconds after it is let go.
+// Clicking a dot opens its question, and the answer, in the panel beside.
+// In Retro, the questions take the palette's colour; the ratings keep
+// theirs, since they carry meaning.
 
 import SwiftUI
 import ModelCheck
+
+/// A dot clicked in the network: a question, or one answer to it.
+struct ConnectionPick: Identifiable, Equatable {
+    let itemId: String
+    /// The answer's exchange, or nil for the question itself.
+    let exchangeKey: String?
+    var id: String { exchangeKey ?? "question:" + itemId }
+}
 
 struct ConnectionsView: View {
     let live: LiveState
     let bank: Bank?
     var palette: RetroPalette? = nil
+    /// The dot shown in the panel, ringed.
+    var picked: ConnectionPick? = nil
+    /// A dot was clicked.
+    var pick: (ConnectionPick) -> Void = { _ in }
+
+    /// The turn at `spinFrom`; after it the network turns slowly by itself.
+    @State private var yaw = 0.0
+    @State private var spinFrom = Date.timeIntervalSinceReferenceDate
+    @State private var pitch = 0.32
+    /// The turn and tilt when a drag began.
+    @State private var dragBase: (yaw: Double, pitch: Double)?
 
     private var questionColor: Color { palette?.lineColor ?? Color(red: 0.36, green: 0.52, blue: 1.0) }
     /// An answer not yet rated (its other parts still being asked).
     private var pendingColor: Color { Color(white: 0.75) }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
-            Canvas { context, size in
-                draw(&context, size: size, t: timeline.date.timeIntervalSinceReferenceDate)
+        GeometryReader { geometry in
+            TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
+                Canvas { context, size in
+                    draw(&context, size: size, t: timeline.date.timeIntervalSinceReferenceDate)
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(rotation)
+            .onTapGesture(coordinateSpace: .local) { location in
+                if let hit = hit(at: location, size: geometry.size) { pick(hit) }
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -52,9 +81,77 @@ struct ConnectionsView: View {
         }
     }
 
+    // MARK: Turning by hand
+
+    private func angle(at t: Double) -> Double { yaw + max(0, t - spinFrom) * 0.035 }
+    private func tilt(at t: Double) -> Double { pitch + 0.06 * sin(t * 0.05) }
+
+    private var rotation: some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { value in
+                let now = Date.timeIntervalSinceReferenceDate
+                if dragBase == nil { dragBase = (angle(at: now), pitch) }
+                guard let base = dragBase else { return }
+                yaw = base.yaw + value.translation.width * 0.008
+                pitch = min(1.4, max(-1.4, base.pitch + value.translation.height * 0.006))
+                spinFrom = .infinity // held still while dragged
+            }
+            .onEnded { _ in
+                dragBase = nil
+                // Its own slow turn again, a few seconds after it is let go.
+                spinFrom = Date.timeIntervalSinceReferenceDate + 4
+            }
+    }
+
     // MARK: The network
 
     private struct Point3 { var x, y, z: Double }
+
+    /// Turns, tilts and projects the cloud onto the screen.
+    private struct Camera {
+        let angle, tilt, scale: Double
+        let centre: CGPoint
+
+        /// The point on screen, and how near it is (0 far … 1 near).
+        func project(_ p: Point3) -> (CGPoint, Double) {
+            let x1 = p.x * cos(angle) + p.z * sin(angle)
+            let z1 = -p.x * sin(angle) + p.z * cos(angle)
+            let y1 = p.y * cos(tilt) - z1 * sin(tilt)
+            let z2 = p.y * sin(tilt) + z1 * cos(tilt)
+            let perspective = 2.4 / (2.4 + z2)
+            return (CGPoint(x: centre.x + x1 * scale * perspective, y: centre.y + y1 * scale * perspective), max(0, min(1, (1 - z2) / 2)))
+        }
+    }
+
+    private func camera(size: CGSize, t: Double) -> Camera {
+        Camera(angle: angle(at: t), tilt: tilt(at: t), scale: min(size.width, size.height) * 0.78,
+               centre: CGPoint(x: size.width / 2, y: size.height / 2))
+    }
+
+    /// The dot under a click, the nearest within a few points; nearer dots
+    /// win over ones behind them.
+    private func hit(at location: CGPoint, size: CGSize) -> ConnectionPick? {
+        guard let bank else { return nil }
+        let camera = self.camera(size: size, t: Date.timeIntervalSinceReferenceDate)
+        var best: (pick: ConnectionPick, score: Double)?
+        func consider(_ pick: ConnectionPick, _ point: CGPoint, _ depth: Double) {
+            let d = hypot(point.x - location.x, point.y - location.y)
+            guard d < 12 else { return }
+            let score = d - depth * 3
+            if best == nil || score < best!.score { best = (pick, score) }
+        }
+        let items = Dictionary(uniqueKeysWithValues: bank.items.map { ($0.id, position(of: $0)) })
+        for (id, p) in items {
+            let (sp, depth) = camera.project(p)
+            consider(ConnectionPick(itemId: id, exchangeKey: nil), sp, depth)
+        }
+        for exchange in live.exchanges.suffix(900) {
+            guard let q = items[exchange.itemId] else { continue }
+            let (sp, depth) = camera.project(answerPosition(exchange, near: q))
+            consider(ConnectionPick(itemId: exchange.itemId, exchangeKey: exchange.key), sp, depth)
+        }
+        return best?.pick
+    }
 
     private static func hash(_ s: String) -> UInt64 {
         var h: UInt64 = 0xcbf29ce484222325
@@ -101,20 +198,8 @@ struct ConnectionsView: View {
 
     private func draw(_ context: inout GraphicsContext, size: CGSize, t: Double) {
         guard let bank else { return }
-        let angle = t * 0.035
-        let tilt = 0.32 + 0.06 * sin(t * 0.05)
-        let scale = min(size.width, size.height) * 0.78
-        let centre = CGPoint(x: size.width / 2, y: size.height / 2)
-
-        /// Rotate, tilt and project: the point on screen, and how near it is (0 far … 1 near).
-        func project(_ p: Point3) -> (CGPoint, Double) {
-            let x1 = p.x * cos(angle) + p.z * sin(angle)
-            let z1 = -p.x * sin(angle) + p.z * cos(angle)
-            let y1 = p.y * cos(tilt) - z1 * sin(tilt)
-            let z2 = p.y * sin(tilt) + z1 * cos(tilt)
-            let perspective = 2.4 / (2.4 + z2)
-            return (CGPoint(x: centre.x + x1 * scale * perspective, y: centre.y + y1 * scale * perspective), max(0, min(1, (1 - z2) / 2)))
-        }
+        let camera = self.camera(size: size, t: t)
+        let project = camera.project
 
         let items = bank.items
         let itemPoints = Dictionary(uniqueKeysWithValues: items.map { ($0.id, position(of: $0)) })
@@ -175,6 +260,23 @@ struct ConnectionsView: View {
             let lit = asked.contains(item.id)
             glow(&context, sp, depth: depth, color: questionColor, radius: lit ? 3.2 : 1.6, bright: lit ? 1 : 0.3)
         }
+
+        // The dot shown in the panel, ringed; an answer's question too.
+        if let picked, let q = itemPoints[picked.itemId] {
+            let (qp, _) = project(q)
+            ring(&context, qp, color: questionColor, pulse: picked.exchangeKey == nil ? t : nil)
+            if let key = picked.exchangeKey, let exchange = live.exchanges.last(where: { $0.key == key }) {
+                let (ap, _) = project(answerPosition(exchange, near: q))
+                ring(&context, ap, color: ratings[exchange.outcomeKey]?.color ?? pendingColor, pulse: t)
+            }
+        }
+    }
+
+    /// A ring round a picked dot, breathing when it is the one clicked.
+    private func ring(_ context: inout GraphicsContext, _ p: CGPoint, color: Color, pulse t: Double?) {
+        let r = 9 + (t.map { 2 * sin($0 * 3) } ?? 0)
+        context.stroke(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)),
+                       with: .color(color.opacity(0.95)), lineWidth: 1.4)
     }
 
     private func distance(_ a: Point3, _ b: Point3) -> Double {

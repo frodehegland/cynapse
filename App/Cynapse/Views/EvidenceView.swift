@@ -148,6 +148,7 @@ struct EvidenceView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(record.ask.conversation.last?.text ?? "")
                 .font(.system(.body, design: .serif))
+                .foregroundStyle(Color.question)
                 .textSelection(.enabled)
             ForEach(Array((record.ask.followUps ?? []).enumerated()), id: \.offset) { _, f in
                 Text("Then: " + f).font(.system(.callout, design: .serif)).foregroundStyle(.secondary)

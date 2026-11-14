@@ -27,7 +27,7 @@ enum Snapshot {
                 app.startCheck(entry, mode: .quick)
                 // Mid-run pictures, once there is something to show.
                 while app.runningEntry != nil && app.live.done < 120 { try? await Task.sleep(for: .milliseconds(300)) }
-                render(LiveSnapshot(look: .manuscript).environment(app), "live-manuscript-running", folder)
+                render(LiveSnapshot(look: .connections).environment(app), "live-connections-running", folder)
                 render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-running", folder)
                 render(LiveSnapshot(look: .loom).environment(app), "live-loom-running", folder)
                 while app.runningEntry != nil { try? await Task.sleep(for: .milliseconds(300)) }
@@ -56,6 +56,25 @@ enum Snapshot {
                     try? bitmap.representation(using: .png, properties: [:])?.write(to: folder.appendingPathComponent("panel.png"))
                 }
             }
+            // A clicked answer in Connections: a wrong one if there is one.
+            let ratings = app.live.assessments(bank: app.bank)
+            if let exchange = app.live.exchanges.first(where: { ratings[$0.outcomeKey] == .wrong }) ?? app.live.exchanges.first {
+                let pick = ConnectionPick(itemId: exchange.itemId, exchangeKey: exchange.key)
+                render(LiveSnapshot(look: .connections, picked: pick).environment(app), "live-connections-picked", folder)
+                let host = NSHostingView(rootView: ConnectionPanel(pick: pick, live: app.live, bank: app.bank) {}
+                    .environment(\.colorScheme, .dark).frame(width: 480, height: 900))
+                host.frame = NSRect(x: 0, y: 0, width: 480, height: 900)
+                let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                window.contentView = host
+                window.appearance = NSAppearance(named: .darkAqua)
+                window.orderBack(nil)
+                try? await Task.sleep(for: .seconds(2))
+                if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                    try? bitmap.representation(using: .png, properties: [:])?.write(to: folder.appendingPathComponent("connection-panel.png"))
+                }
+                print("panel check: picked \(exchange.key)")
+            }
             print("Wrote snapshots to \(folder.path)")
             exit(0)
         }
@@ -74,12 +93,12 @@ enum Snapshot {
 struct LiveSnapshot: View {
     @Environment(AppModel.self) private var app
     let look: LiveLook
+    var picked: ConnectionPick? = nil
     var body: some View {
         ZStack {
             Color.black
             switch look {
-            case .connections: ConnectionsView(live: app.live, bank: app.bank)
-            case .manuscript: ManuscriptView(live: app.live, ink: .white, privacy: false) { _ in }
+            case .connections: ConnectionsView(live: app.live, bank: app.bank, picked: picked)
             case .constellation: ConstellationView(live: app.live, bank: app.bank, ink: .white)
             case .loom: LoomView(live: app.live, ink: .white)
             }

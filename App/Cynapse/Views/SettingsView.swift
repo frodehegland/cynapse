@@ -20,7 +20,6 @@ struct LiveSettingsView: View {
     @AppStorage(LiveSettings.style) private var style = "random"
     @AppStorage(LiveSettings.cycleSeconds) private var cycleSeconds = 90
     @AppStorage(LiveSettings.density) private var density = "standard"
-    @AppStorage(LiveSettings.manuscriptStyle) private var manuscriptStyle = "rain"
     @AppStorage(LiveSettings.privacy) private var privacy = false
     @AppStorage(LiveSettings.theme) private var theme = "system"
     @AppStorage(LiveSettings.retro) private var retro = false
@@ -48,10 +47,6 @@ struct LiveSettingsView: View {
                     Text("Every 90 seconds").tag(90)
                     Text("Every 3 minutes").tag(180)
                 }
-            }
-            Picker("Manuscript style", selection: $manuscriptStyle) {
-                Text("Rain (from Author's Matrix)").tag("rain")
-                Text("Scrolling page").tag("scroll")
             }
             Picker("Information", selection: $density) {
                 Text("Pictures only").tag("ambient")

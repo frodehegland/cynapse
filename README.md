@@ -66,7 +66,7 @@ Phase 0, working end to end; the questions are a reviewed pilot.
 - [x] Neutral controls for contexts (Oslo, Montevideo, a university course) and dates (an ordinary extra line in the instructions); a changed answer is asked three more times before it counts; refusals are reported as refusals
 - [x] Models: downloaded MLX models, Apple Intelligence, and Claude, ChatGPT and Gemini with your own key
 - [x] The Mac app: profile card, details, evidence behind every number, the questions browser, history, export
-- [x] The Live View: Manuscript (scroll, or Rain from Author's Matrix screensaver), Constellation, Loom
+- [x] The Live View: Connections (turn it by dragging; click a dot for its question and answer), Constellation, Loom
 - [x] Pilot question bank v0.2 (68 items), reviewed by Google Gemini; see `Bank/pilot/`
 - [x] Judges from several labs for contested evidence and two-sided writing (Settings ▸ Judges, or `--judges`)
 - [x] The hidden question pool, its fingerprint published in `Bank/pools.json` (first pool: `pool-2026-11`, retires 14 May 2027)

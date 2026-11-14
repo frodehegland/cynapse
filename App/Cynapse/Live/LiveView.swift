@@ -3,18 +3,17 @@
 // After Gemini's specification (docs/live-view.md), with its amendments:
 // nothing moves that the check didn't do; no grades and no warning
 // colours; no internal terms on screen; lean shown only once an axis has
-// enough consistent answers; Author's Matrix screensaver as the Rain style.
+// enough consistent answers.
 
 import SwiftUI
 import ModelCheck
 
 enum LiveLook: String, CaseIterable, Identifiable {
-    case connections, manuscript, constellation, loom
+    case connections, constellation, loom
     var id: String { rawValue }
     var title: String {
         switch self {
         case .connections: "Connections"
-        case .manuscript: "Manuscript"
         case .constellation: "Constellation"
         case .loom: "Loom"
         }
@@ -25,7 +24,6 @@ enum LiveSettings {
     static let style = "LiveStyle"              // "random" or a LiveLook
     static let cycleSeconds = "LiveCycleSeconds" // 0 = at the end of each kind of question
     static let density = "LiveDensity"          // "ambient", "standard", "diagnostic"
-    static let manuscriptStyle = "LiveManuscriptStyle" // "scroll" or "rain"
     static let privacy = "LivePrivacy"
     static let theme = "LiveTheme"              // "system", "paper", "obsidian"
     static let retro = "LiveRetro"
@@ -39,7 +37,6 @@ struct LiveView: View {
     @AppStorage(LiveSettings.style) private var style = "random"
     @AppStorage(LiveSettings.cycleSeconds) private var cycleSeconds = 90
     @AppStorage(LiveSettings.density) private var density = "standard"
-    @AppStorage(LiveSettings.manuscriptStyle) private var manuscriptStyle = "rain"
     @AppStorage(LiveSettings.privacy) private var privacy = false
     @AppStorage(LiveSettings.theme) private var theme = "system"
     @AppStorage(LiveSettings.retro) private var retro = false
@@ -51,32 +48,32 @@ struct LiveView: View {
     @State private var toggleFullScreen = false
     @State private var controlsShown = true
     @State private var lastMove = Date()
-    @State private var inspected: Exchange?
     @State private var lastCycle = Date()
     @State private var lastModule: Item.Module?
     @State private var cardHidden = false
     @State private var evidence: Evidence?
+    /// A dot clicked in Connections, shown in the panel.
+    @State private var picked: ConnectionPick?
 
     private var live: LiveState { app.live }
     /// The Retro palette in use, or nil when Retro is off.
     private var retroPalette: RetroPalette? { retro ? palette : nil }
     private var dark: Bool {
         // Glowing looks need the dark: on a light page their light vanishes.
-        if retro || look == .connections || (look == .manuscript && manuscriptStyle == "rain") { return true }
+        if retro || look == .connections { return true }
         switch theme {
         case "paper": return false
         case "obsidian": return true
-        default: return systemScheme == .dark || look != .manuscript || manuscriptStyle == "rain"
+        default: return true
         }
     }
     private var ink: Color { retroPalette?.textColor ?? (dark ? .white : Color(white: 0.08)) }
     /// The words around the edges in the look's own colours: Retro's
-    /// palette, the Rain's green, Synapses' blue, or the page's ink.
+    /// palette, Connections' blue, or the page's ink.
     private var edgeColor: Color {
         if let retroPalette { return retroPalette.textColor }
         switch look {
         case .connections: return Color(red: 0.62, green: 0.72, blue: 1.0)
-        case .manuscript where manuscriptStyle == "rain": return Color(red: 0.35, green: 1.0, blue: 0.45)
         default: return ink
         }
     }
@@ -88,12 +85,9 @@ struct LiveView: View {
             Group {
                 switch look {
                 case .connections:
-                    ConnectionsView(live: live, bank: app.bank, palette: retroPalette)
-                case .manuscript:
-                    if manuscriptStyle == "rain" {
-                        RainView(live: live, privacy: privacy, palette: retroPalette)
-                    } else {
-                        ManuscriptView(live: live, ink: ink, privacy: privacy, palette: retroPalette) { inspected = $0 }
+                    ConnectionsView(live: live, bank: app.bank, palette: retroPalette, picked: picked) { pick in
+                        evidence = nil
+                        picked = pick
                     }
                 case .constellation:
                     ConstellationView(live: live, bank: app.bank, ink: ink, line: retroPalette?.lineColor ?? ink)
@@ -112,6 +106,7 @@ struct LiveView: View {
                 ProfileCardView(profile: profile, status: "checked") { ids, title in
                     // The stored check this profile came from, for its transcript.
                     if !ids.isEmpty, let stored = app.profiles.values.flatMap({ $0 }).first(where: { $0.profile.createdAt == profile.createdAt }) {
+                        picked = nil
                         evidence = Evidence(title: title, ids: ids, stored: stored)
                     }
                 }
@@ -147,14 +142,20 @@ struct LiveView: View {
         .onChange(of: retroPaletteName) { _, new in palette = RetroPalette.named(new) }
         .onChange(of: style) { _, new in if let l = LiveLook(rawValue: new) { look = l } }
         .task { await autoCycle() }
-        .sheet(item: $inspected) { ExchangeDrawer(exchange: $0) }
-        .inspector(isPresented: Binding(get: { evidence != nil }, set: { if !$0 { evidence = nil } })) {
-            if let evidence {
-                EvidenceView(evidence: evidence) { self.evidence = nil }
-                    .id(evidence.id)
-                    .environment(\.colorScheme, .dark)
-                    .inspectorColumnWidth(min: 360, ideal: 460, max: 700)
+        .onChange(of: look) { _, new in if new != .connections { picked = nil } }
+        .inspector(isPresented: Binding(get: { evidence != nil || picked != nil },
+                                        set: { if !$0 { evidence = nil; picked = nil } })) {
+            Group {
+                if let picked {
+                    ConnectionPanel(pick: picked, live: live, bank: app.bank, privacy: privacy) { self.picked = nil }
+                        .id(picked.id)
+                } else if let evidence {
+                    EvidenceView(evidence: evidence) { self.evidence = nil }
+                        .id(evidence.id)
+                }
             }
+            .environment(\.colorScheme, .dark)
+            .inspectorColumnWidth(min: 360, ideal: 460, max: 700)
         }
         .frame(minWidth: 900, minHeight: 600)
     }
@@ -233,7 +234,7 @@ struct LiveView: View {
                     ForEach(LiveLook.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 420)
+                .frame(width: 320)
                 Toggle("Retro", isOn: $retro).toggleStyle(.switch).controlSize(.small)
                 Toggle("Hide charged wording", isOn: $privacy).toggleStyle(.switch).controlSize(.small)
                 Button { toggleFullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
@@ -267,6 +268,7 @@ struct LiveView: View {
         let mode: RunMode = live.profile?.run.kind == .full ? .full : .quick
         cardHidden = false
         evidence = nil
+        picked = nil
         app.startCheck(entry, mode: mode)
     }
 
@@ -307,34 +309,5 @@ struct LiveView: View {
         case .dialogue: "Conversations"
         case .work: "Work"
         }
-    }
-}
-
-/// One exchange in full: the exact prompt, the settings, the raw answer.
-struct ExchangeDrawer: View {
-    @Environment(\.dismiss) private var dismiss
-    let exchange: Exchange
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(exchange.itemId).font(.caption.monospaced()).foregroundStyle(.secondary)
-                Spacer()
-                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
-            }
-            if !exchange.situation.isEmpty { Text(exchange.situation).font(.callout).foregroundStyle(.secondary) }
-            if let system = exchange.system { Text("System: \(system)").font(.caption.monospaced()) }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(exchange.prompt).font(.system(.title3, design: .serif)).textSelection(.enabled)
-                    Divider()
-                    Text(exchange.answer).textSelection(.enabled)
-                    if let plain = exchange.plain { Text(plain).font(.callout).foregroundStyle(.secondary) }
-                }
-            }
-            Text("Temperature 0 · fixed seed where the model allows").font(.caption2).foregroundStyle(.tertiary)
-        }
-        .padding(24)
-        .frame(width: 640, height: 480)
     }
 }

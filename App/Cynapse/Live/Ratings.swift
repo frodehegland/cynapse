@@ -38,3 +38,13 @@ extension Exchange {
         return ([parts[0]] + parts[2..<(parts.count - 1)] + [parts[parts.count - 1]]).joined(separator: "|")
     }
 }
+
+extension Color {
+    /// The blue questions are written in, in the panels and the network:
+    /// lighter on dark backgrounds, deeper on light ones.
+    static let question = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(red: 0.50, green: 0.66, blue: 1.0, alpha: 1)
+            : NSColor(red: 0.12, green: 0.36, blue: 0.86, alpha: 1)
+    })
+}
