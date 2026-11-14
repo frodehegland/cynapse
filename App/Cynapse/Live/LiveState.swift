@@ -44,7 +44,7 @@ final class LiveState {
     var progress: [Item.Module: (done: Int, total: Int)] = [:]
     /// Per axis: consistent, inconsistent and declined statements so far.
     var axisCounts: [String: (stable: Int, unstable: Int, declined: Int)] = [:]
-    /// Every scored outcome, in order, for the Constellation.
+    /// Every scored outcome, in order: the ratings and clusters in Connections.
     var outcomes: [(outcome: Scorer.Outcome, module: Item.Module, axis: String?)] = []
     /// Bumped on every answered request, for views that animate on arrival.
     var tick = 0

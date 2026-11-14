@@ -1,4 +1,4 @@
-// SettingsView.swift — the Live View's look, and the person's cloud keys.
+// SettingsView.swift — the Live View, re-checks, judges, and the person's cloud keys.
 
 import SwiftUI
 import ModelCheckModels
@@ -17,11 +17,8 @@ struct SettingsView: View {
 }
 
 struct LiveSettingsView: View {
-    @AppStorage(LiveSettings.style) private var style = "random"
-    @AppStorage(LiveSettings.cycleSeconds) private var cycleSeconds = 90
     @AppStorage(LiveSettings.density) private var density = "standard"
     @AppStorage(LiveSettings.privacy) private var privacy = false
-    @AppStorage(LiveSettings.theme) private var theme = "system"
     @AppStorage(LiveSettings.retro) private var retro = false
     @AppStorage(LiveSettings.retroPalette) private var retroPalette = "random"
     @AppStorage(LiveSettings.fullScreen) private var fullScreen = true
@@ -36,18 +33,6 @@ struct LiveSettingsView: View {
                     ForEach(RetroPalette.all) { Text($0.name).tag($0.name) }
                 }
             }
-            Picker("Look", selection: $style) {
-                Text("Change by itself").tag("random")
-                ForEach(LiveLook.allCases) { Text($0.title).tag($0.rawValue) }
-            }
-            if style == "random" {
-                Picker("Change", selection: $cycleSeconds) {
-                    Text("When a new kind of question begins").tag(0)
-                    Text("Every minute").tag(60)
-                    Text("Every 90 seconds").tag(90)
-                    Text("Every 3 minutes").tag(180)
-                }
-            }
             Picker("Information", selection: $density) {
                 Text("Pictures only").tag("ambient")
                 Text("Standard").tag("standard")
@@ -56,11 +41,6 @@ struct LiveSettingsView: View {
             Toggle("Hide the wording of charged questions", isOn: $privacy)
             Text("For a shared or office screen: contested questions show as “a question on a contested subject”.")
                 .font(.caption).foregroundStyle(.secondary)
-            Picker("Colours", selection: $theme) {
-                Text("Follow the system").tag("system")
-                Text("Paper").tag("paper")
-                Text("Obsidian").tag("obsidian")
-            }
         }
         .formStyle(.grouped)
     }

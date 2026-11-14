@@ -27,15 +27,12 @@ enum Snapshot {
                 app.startCheck(entry, mode: .quick)
                 // Mid-run pictures, once there is something to show.
                 while app.runningEntry != nil && app.live.done < 120 { try? await Task.sleep(for: .milliseconds(300)) }
-                render(LiveSnapshot(look: .connections).environment(app), "live-connections-running", folder)
-                render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-running", folder)
-                render(LiveSnapshot(look: .loom).environment(app), "live-loom-running", folder)
+                render(LiveSnapshot().environment(app), "live-connections-running", folder)
                 while app.runningEntry != nil { try? await Task.sleep(for: .milliseconds(300)) }
             }
             if app.live.exchanges.isEmpty { app.replayLatest() }
-            render(LiveSnapshot(look: .connections).environment(app), "live-connections", folder)
-            render(LiveSnapshot(look: .connections, clusters: true).environment(app), "live-connections-clusters", folder)
-            render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-done", folder)
+            render(LiveSnapshot().environment(app), "live-connections", folder)
+            render(LiveSnapshot(clusters: true).environment(app), "live-connections-clusters", folder)
             render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked", close: {}) { _, _ in }
                     .padding(20).frame(width: 760).environment(app), "card", folder, size: CGSize(width: 760, height: 900))
             render(ModelDetailView(entry: entry).environment(app).frame(width: 900, height: 1500), "detail", folder, size: CGSize(width: 900, height: 1500))
@@ -61,7 +58,7 @@ enum Snapshot {
             let ratings = app.live.assessments(bank: app.bank)
             if let exchange = app.live.exchanges.first(where: { ratings[$0.outcomeKey] == .wrong }) ?? app.live.exchanges.first {
                 let pick = ConnectionPick(itemId: exchange.itemId, exchangeKey: exchange.key)
-                render(LiveSnapshot(look: .connections, picked: pick).environment(app), "live-connections-picked", folder)
+                render(LiveSnapshot(picked: pick).environment(app), "live-connections-picked", folder)
                 let host = NSHostingView(rootView: ConnectionPanel(pick: pick, live: app.live, bank: app.bank) {}
                     .environment(\.colorScheme, .dark).frame(width: 480, height: 900))
                 host.frame = NSRect(x: 0, y: 0, width: 480, height: 900)
@@ -108,20 +105,15 @@ enum Snapshot {
     }
 }
 
-/// The Live View with a fixed look, for snapshots (the real one cycles).
+/// The Live View, for snapshots.
 struct LiveSnapshot: View {
     @Environment(AppModel.self) private var app
-    let look: LiveLook
     var picked: ConnectionPick? = nil
     var clusters = false
     var body: some View {
         ZStack {
             Color.black
-            switch look {
-            case .connections: ConnectionsView(live: app.live, bank: app.bank, picked: picked, fixedClusters: clusters)
-            case .constellation: ConstellationView(live: app.live, bank: app.bank, ink: .white)
-            case .loom: LoomView(live: app.live, ink: .white)
-            }
+            ConnectionsView(live: app.live, bank: app.bank, picked: picked, fixedClusters: clusters)
             VStack {
                 HStack {
                     VStack(alignment: .leading) {
@@ -140,7 +132,7 @@ struct LiveSnapshot: View {
                 }
             }
             .padding(24)
-            .foregroundStyle(look == .connections ? Color(red: 0.36, green: 0.44, blue: 0.70) : .white.opacity(0.75))
+            .foregroundStyle(Color(red: 0.36, green: 0.44, blue: 0.70))
         }
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)

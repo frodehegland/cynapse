@@ -1,4 +1,5 @@
-// LiveView.swift — the check as it runs, full screen if wanted.
+// LiveView.swift — the check as it runs, full screen if wanted, drawn as
+// Connections (ConnectionsView.swift), the one look.
 //
 // After Gemini's specification (docs/live-view.md), with its amendments:
 // nothing moves that the check didn't do; no grades and no warning
@@ -8,24 +9,9 @@
 import SwiftUI
 import ModelCheck
 
-enum LiveLook: String, CaseIterable, Identifiable {
-    case connections, constellation, loom
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .connections: "Connections"
-        case .constellation: "Constellation"
-        case .loom: "Loom"
-        }
-    }
-}
-
 enum LiveSettings {
-    static let style = "LiveStyle"              // "random" or a LiveLook
-    static let cycleSeconds = "LiveCycleSeconds" // 0 = at the end of each kind of question
     static let density = "LiveDensity"          // "ambient", "standard", "diagnostic"
     static let privacy = "LivePrivacy"
-    static let theme = "LiveTheme"              // "system", "paper", "obsidian"
     static let retro = "LiveRetro"
     static let retroPalette = "LiveRetroPalette" // "random" or a palette's name
     static let fullScreen = "LiveFullScreen"    // open in full screen
@@ -33,23 +19,16 @@ enum LiveSettings {
 
 struct LiveView: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.colorScheme) private var systemScheme
-    @AppStorage(LiveSettings.style) private var style = "random"
-    @AppStorage(LiveSettings.cycleSeconds) private var cycleSeconds = 90
     @AppStorage(LiveSettings.density) private var density = "standard"
     @AppStorage(LiveSettings.privacy) private var privacy = false
-    @AppStorage(LiveSettings.theme) private var theme = "system"
     @AppStorage(LiveSettings.retro) private var retro = false
     @AppStorage(LiveSettings.retroPalette) private var retroPaletteName = "random"
     @AppStorage(LiveSettings.fullScreen) private var openFullScreen = true
 
-    @State private var look: LiveLook = .connections
     @State private var palette = RetroPalette.all.randomElement()!
     @State private var toggleFullScreen = false
     @State private var controlsShown = true
     @State private var lastMove = Date()
-    @State private var lastCycle = Date()
-    @State private var lastModule: Item.Module?
     @State private var cardHidden = false
     @State private var evidence: Evidence?
     /// A dot clicked in Connections, shown in the panel.
@@ -58,48 +37,20 @@ struct LiveView: View {
     private var live: LiveState { app.live }
     /// The Retro palette in use, or nil when Retro is off.
     private var retroPalette: RetroPalette? { retro ? palette : nil }
-    private var dark: Bool {
-        // Glowing looks need the dark: on a light page their light vanishes.
-        if retro || look == .connections { return true }
-        switch theme {
-        case "paper": return false
-        case "obsidian": return true
-        default: return true
-        }
-    }
-    private var ink: Color { retroPalette?.textColor ?? (dark ? .white : Color(white: 0.08)) }
-    /// The words around the edges in the look's own colours: Retro's
-    /// palette, Connections' blue, or the page's ink.
-    private var edgeColor: Color {
-        if let retroPalette { return retroPalette.textColor }
-        switch look {
-        // A deeper, quieter blue than the network's, so the words sit back
-        // and the connections stand out.
-        case .connections: return Color(red: 0.36, green: 0.44, blue: 0.70)
-        default: return ink
-        }
-    }
-    private var paper: Color { dark ? .black : Color(red: 0.98, green: 0.97, blue: 0.94) }
+    private var ink: Color { retroPalette?.textColor ?? .white }
+    /// The words around the edges: Retro's palette, or a deeper, quieter
+    /// blue than the network's, so the words sit back and the connections
+    /// stand out.
+    private var edgeColor: Color { retroPalette?.textColor ?? Color(red: 0.36, green: 0.44, blue: 0.70) }
 
     var body: some View {
         ZStack {
-            paper.ignoresSafeArea()
-            Group {
-                switch look {
-                case .connections:
-                    ConnectionsView(live: live, bank: app.bank, palette: retroPalette, picked: picked) { pick in
-                        evidence = nil
-                        picked = pick
-                    }
-                case .constellation:
-                    ConstellationView(live: live, bank: app.bank, ink: ink, line: retroPalette?.lineColor ?? ink)
-                        .retroGlow(retroPalette)
-                case .loom:
-                    LoomView(live: live, ink: ink, line: retroPalette?.lineColor ?? ink)
-                        .retroGlow(retroPalette)
-                }
+            // The network glows: it needs the dark.
+            Color.black.ignoresSafeArea()
+            ConnectionsView(live: live, bank: app.bank, palette: retroPalette, picked: picked) { pick in
+                evidence = nil
+                picked = pick
             }
-            .transition(.opacity)
 
             FullScreenControl(request: $toggleFullScreen, fullScreenAtStart: openFullScreen).frame(width: 0, height: 0)
             if density != "ambient" { hud.retroGlow(retroPalette) }
@@ -124,14 +75,12 @@ struct LiveView: View {
             }
         }
         .foregroundStyle(ink)
-        .environment(\.colorScheme, dark ? .dark : .light)
-        .animation(.easeInOut(duration: 1.2), value: look)
+        .environment(\.colorScheme, .dark)
         .animation(.easeInOut(duration: 1.5), value: live.profile == nil)
         .onContinuousHover { _ in showControls() }
         .onTapGesture { showControls() }
         .focusable()
         .focusEffectDisabled()
-        .onKeyPress(.space) { cycle(); return .handled }
         .onKeyPress(.escape) {
             if live.profile != nil, !live.running, !cardHidden { hideCard(); return .handled }
             if NSApp.keyWindow?.styleMask.contains(.fullScreen) == true { toggleFullScreen = true; return .handled }
@@ -139,15 +88,12 @@ struct LiveView: View {
         }
         .onKeyPress { _ in showControls(); return .ignored }
         .onAppear {
-            look = style == "random" ? .connections : (LiveLook(rawValue: style) ?? .connections)
             palette = RetroPalette.named(retroPaletteName)
             if !live.running && live.exchanges.isEmpty { app.replayLatest() }
         }
         .onChange(of: live.running) { _, running in if running { cardHidden = false } }
         .onChange(of: retroPaletteName) { _, new in palette = RetroPalette.named(new) }
-        .onChange(of: style) { _, new in if let l = LiveLook(rawValue: new) { look = l } }
-        .task { await autoCycle() }
-        .onChange(of: look) { _, new in if new != .connections { picked = nil } }
+        .task { await fadeControls() }
         .inspector(isPresented: Binding(get: { evidence != nil || picked != nil },
                                         set: { if !$0 { evidence = nil; picked = nil } })) {
             Group {
@@ -246,11 +192,6 @@ struct LiveView: View {
                     .buttonBorderShape(.capsule)
                     .disabled(app.runningEntry != nil || rescanEntry == nil)
                     .help(rescanEntry.map { "Check \($0.name) again" } ?? "Choose a model to check")
-                Picker("", selection: $look) {
-                    ForEach(LiveLook.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 320)
                 Toggle("Retro", isOn: $retro).toggleStyle(.switch).controlSize(.small)
                 Toggle("Hide charged wording", isOn: $privacy).toggleStyle(.switch).controlSize(.small)
                 Button { toggleFullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
@@ -298,23 +239,11 @@ struct LiveView: View {
         withAnimation { controlsShown = true }
     }
 
-    private func cycle() {
-        let all = LiveLook.allCases
-        look = all[(all.firstIndex(of: look)! + 1) % all.count]
-        lastCycle = Date()
-    }
-
-    private func autoCycle() async {
+    /// The controls fade after a few still seconds.
+    private func fadeControls() async {
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(1))
-            // Controls fade after a few still seconds; moving pauses cycling.
             if controlsShown, Date().timeIntervalSince(lastMove) > 4 { withAnimation { controlsShown = false } }
-            guard style == "random", Date().timeIntervalSince(lastMove) > 4, live.running else { continue }
-            let module = live.current?.module
-            let byTime = cycleSeconds > 0 && Date().timeIntervalSince(lastCycle) > Double(cycleSeconds)
-            let byMilestone = cycleSeconds == 0 && module != nil && lastModule != nil && module != lastModule
-            if byTime || byMilestone { cycle() }
-            lastModule = module
         }
     }
 
