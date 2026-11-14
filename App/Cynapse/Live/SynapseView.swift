@@ -32,8 +32,9 @@ struct SynapseView: View {
                 legend(answerColor, "the model's answers")
             }
             .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(questionColor.mix(with: .white, by: 0.35))
             .padding(.trailing, 24).padding(.bottom, 64)
-            .opacity(0.6)
+            .opacity(0.75)
         }
     }
 

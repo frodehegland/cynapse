@@ -83,7 +83,7 @@ struct LiveSnapshot: View {
                 }
             }
             .padding(24)
-            .foregroundStyle(.white.opacity(0.75))
+            .foregroundStyle(look == .synapses ? Color(red: 0.62, green: 0.72, blue: 1.0) : .white.opacity(0.75))
         }
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)

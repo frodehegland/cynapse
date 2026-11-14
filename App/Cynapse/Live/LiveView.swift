@@ -60,7 +60,8 @@ struct LiveView: View {
     /// The Retro palette in use, or nil when Retro is off.
     private var retroPalette: RetroPalette? { retro ? palette : nil }
     private var dark: Bool {
-        if retro { return true }
+        // Glowing looks need the dark: on a light page their light vanishes.
+        if retro || look == .synapses || (look == .manuscript && manuscriptStyle == "rain") { return true }
         switch theme {
         case "paper": return false
         case "obsidian": return true
@@ -68,6 +69,16 @@ struct LiveView: View {
         }
     }
     private var ink: Color { retroPalette?.textColor ?? (dark ? .white : Color(white: 0.08)) }
+    /// The words around the edges in the look's own colours: Retro's
+    /// palette, the Rain's green, Synapses' blue, or the page's ink.
+    private var edgeColor: Color {
+        if let retroPalette { return retroPalette.textColor }
+        switch look {
+        case .synapses: return Color(red: 0.62, green: 0.72, blue: 1.0)
+        case .manuscript where manuscriptStyle == "rain": return Color(red: 0.35, green: 1.0, blue: 0.45)
+        default: return ink
+        }
+    }
     private var paper: Color { dark ? .black : Color(red: 0.98, green: 0.97, blue: 0.94) }
 
     var body: some View {
@@ -149,7 +160,8 @@ struct LiveView: View {
         }
         .padding(24)
         .font(.system(size: 12, design: .monospaced))
-        .foregroundStyle(retroPalette?.textColor ?? ink)
+        .foregroundStyle(edgeColor)
+        .shadow(color: edgeColor.opacity(look == .synapses || retro ? 0.6 : 0), radius: 4)
         .allowsHitTesting(false)
     }
 
@@ -207,6 +219,8 @@ struct LiveView: View {
                     .keyboardShortcut("f", modifiers: [.control, .command])
             }
             .padding(24)
+            .tint(edgeColor)
+            .foregroundStyle(edgeColor)
         }
         .transition(.opacity)
     }
