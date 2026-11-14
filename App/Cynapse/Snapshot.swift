@@ -34,6 +34,7 @@ enum Snapshot {
             }
             if app.live.exchanges.isEmpty { app.replayLatest() }
             render(LiveSnapshot(look: .connections).environment(app), "live-connections", folder)
+            render(LiveSnapshot(look: .connections, clusters: true).environment(app), "live-connections-clusters", folder)
             render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-done", folder)
             render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked") { _, _ in }
                     .padding(20).frame(width: 760).environment(app), "card", folder, size: CGSize(width: 760, height: 900))
@@ -94,11 +95,12 @@ struct LiveSnapshot: View {
     @Environment(AppModel.self) private var app
     let look: LiveLook
     var picked: ConnectionPick? = nil
+    var clusters = false
     var body: some View {
         ZStack {
             Color.black
             switch look {
-            case .connections: ConnectionsView(live: app.live, bank: app.bank, picked: picked)
+            case .connections: ConnectionsView(live: app.live, bank: app.bank, picked: picked, fixedClusters: clusters)
             case .constellation: ConstellationView(live: app.live, bank: app.bank, ink: .white)
             case .loom: LoomView(live: app.live, ink: .white)
             }
