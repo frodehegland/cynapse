@@ -151,7 +151,7 @@
 		83F6DA6166984BD8A41FA784 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = cynapse;
 				CODE_SIGN_ENTITLEMENTS = Cynapse/Cynapse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -201,7 +201,7 @@
 		B13DB835A0354D0F86DFDD6C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = cynapse;
 				CODE_SIGN_ENTITLEMENTS = Cynapse/Cynapse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
