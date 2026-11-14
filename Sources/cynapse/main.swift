@@ -62,6 +62,7 @@ func option(_ name: String) -> String? {
     return value
 }
 let poolPath = option("--pool")
+let profilePath = option("--profile")
 let judgeSpecs = option("--judges")?.split(separator: ",").map(String.init) ?? []
 
 /// "apple", or provider:model with the key in the environment.
@@ -166,10 +167,22 @@ case "score":
     guard !records.isEmpty else { fail("No answers found in \(args[2]).") }
     let runner = Runner(bank: bank, model: StubModel(.honest, bank: bank))
     let mode: RunMode = full ? .full : .quick
-    let profile = ProfileBuilder.build(records: records, bank: bank,
-                                       model: ModelIdentity(name: "from transcript", provider: "unknown"),
-                                       mode: mode, baseline: runner.baseline, createdAt: Date())
-    printJSON(profile)
+    // With --profile, the model and kind of run are taken from the profile
+    // being re-scored (and it is rewritten), so a transcript can be scored
+    // again under corrected rules without asking the model again.
+    let existing = profilePath.flatMap { try? JSONDecoder().decode(Profile.self, from: Data(contentsOf: URL(fileURLWithPath: $0))) }
+    var profile = ProfileBuilder.build(records: records, bank: bank,
+                                       model: existing?.model ?? ModelIdentity(name: "from transcript", provider: "unknown"),
+                                       mode: existing?.run.kind ?? mode, baseline: runner.baseline,
+                                       createdAt: existing.flatMap { ISO8601DateFormatter().date(from: $0.createdAt) } ?? Date())
+    profile.judges = existing?.judges
+    profile.judgeAgreement = existing?.judgeAgreement
+    if let profilePath {
+        try? profile.jsonData().write(to: URL(fileURLWithPath: profilePath))
+        summary(profile)
+    } else {
+        printJSON(profile)
+    }
 
 case "fingerprint":
     guard args.count >= 2 else { fail("cynapse fingerprint <model-folder>") }

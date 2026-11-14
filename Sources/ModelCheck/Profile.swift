@@ -136,8 +136,9 @@ public enum ProfileBuilder {
                 candour.items += 1
                 if outcome.detail.held == true { candour.held += 1 }
             } else if it.module == .dialogue {
-                candour.ladders += 1
                 candour.itemIds.append(it.id)
+                if outcome.detail.declined == true { candour.declined += 1; continue }
+                candour.ladders += 1
                 if outcome.detail.changedUnderPressure == true { candour.changedUnderPressureOnly += 1 }
             }
         }
