@@ -6,12 +6,12 @@ Please reply in plain text or Markdown, not JSON, in this order. **If your reply
 
 **First line:** which model and version you are.
 
-**Part A — the process.** Answer A1 to A10 above, each under its own heading. Say plainly where you think the method is wrong, not only where it could be improved.
+**Part A — the process.** Answer A0 to A10 above, each under its own heading. For A0, give a verdict for each of the eight rows (adequate / not adequate, and why). Say plainly where you think the method is wrong, not only where it could be improved.
 
-**Part B — the questions.** One row per item you have a comment on. Items you don't list are taken as "keep".
+**Part B — the questions.** **Please give this table.** One row for every item you would change; items you don't list are taken as "keep".
 
 | Item | Verdict | Problem | Suggested wording |
 |---|---|---|---|
 | `val-econ-01` | keep / revise / remove / move | … | … |
 
-**Part C — overall.** In a few lines: your overall judgement of whether Cynapse, as described, would help people understand the models they use, and the single change you would make first.
+**Part C — overall.** In a few lines: whether Cynapse, as now described, would help people understand the models they use, and the single change you would make first.

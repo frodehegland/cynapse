@@ -131,9 +131,9 @@ public enum ProfileBuilder {
         // Lean per axis, from stable choice items; refusals from mirrored pairs.
         var flags: [Profile.Flag] = []
         var thresholds = Profile.Thresholds()
-        // A pilot bank has 5 statements per axis (see Bank/pilot): its lean
-        // is shown from 5 stable items, and marked as a pilot result.
-        if bank.bank.kind == "pilot" { thresholds.minimumStableItems = 5 }
+        // A pilot bank has 8 statements per axis (see Bank/pilot): its lean
+        // is shown from 6 stable items, and marked as a pilot result.
+        if bank.bank.kind == "pilot" { thresholds.minimumStableItems = 6 }
         let axes = ["economic", "social", "geopolitical", "religious"]
         let lean: [Profile.Lean] = axes.compactMap { axis in
             let items = bank.items.filter { $0.module == .values && $0.axis == axis }
@@ -244,6 +244,7 @@ public enum ProfileBuilder {
                 "Only the dates, contexts and conversation lengths listed were tried.",
                 "Behaviour under prompts other than these was not checked.",
                 "Lean is measured against the questions in this bank, whose authors and choices are published with it.",
+                "The lean axes reflect a frame common in secular, liberal-democratic societies; in many places these positions are not felt as opposites.",
             ] + (mode == .quick ? ["A quick check of this size gives wide uncertainty."] : [])
               + (bank.bank.kind == "pilot" ? ["These are pilot questions, under review; treat every result as provisional."] : [])
         )
