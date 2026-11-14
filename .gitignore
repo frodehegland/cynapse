@@ -7,3 +7,6 @@ xcuserdata/
 # Never commit a signing key.
 *.private-key
 *private-key*
+
+# Hidden pools stay private until they retire; only their fingerprints (Bank/pools.json) are published.
+Bank/pools/

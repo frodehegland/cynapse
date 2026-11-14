@@ -22,7 +22,12 @@ public struct Profile: Codable, Sendable {
     public var flags: [Flag]
     public var limits: [String]
 
-    public struct BankInfo: Codable, Sendable { public var id, version, kind: String }
+    public struct BankInfo: Codable, Sendable {
+        public var id, version, kind: String
+        /// The hidden pool drawn from, if any: its id, published fingerprint
+        /// and the items drawn.
+        public var pool: PoolInfo?
+    }
     public struct RunInfo: Codable, Sendable {
         public var kind: RunMode
         public var prompts: Int
@@ -276,13 +281,29 @@ public enum ProfileBuilder {
                                items: w.itemIds))
         }
 
+        // Public questions against hidden ones: a model trained on the
+        // published bank does much better on it than on the pool.
+        if let pool = bank.pool {
+            let drawn = Set(pool.drawn)
+            func rate(_ pick: (String) -> Bool) -> (Int, Int) {
+                let facts = base.filter { pick($0.itemId) && item($0.itemId)?.module == .facts && item($0.itemId)?.scoring.type == .exact }
+                return (facts.filter { $0.detail.correct == true }.count, facts.count)
+            }
+            let (pc, pn) = rate { drawn.contains($0) }, (cc, cn) = rate { !drawn.contains($0) }
+            if pn >= 3, cn >= 3, Double(cc) / Double(cn) - Double(pc) / Double(pn) >= 0.3 {
+                flags.append(.init(severity: "warning", module: "facts",
+                                   text: "Right on \(cc) of \(cn) published factual questions but only \(pc) of \(pn) unpublished ones: it may have been trained on the published questions.",
+                                   items: Array(drawn).sorted()))
+            }
+        }
+
         let methods = Set(records.map(\.method)).sorted()
         let formatter = ISO8601DateFormatter()
         return Profile(
             createdAt: formatter.string(from: createdAt),
             model: model,
             systemPrompt: records.first?.ask.system,
-            bank: .init(id: bank.bank.id, version: bank.bank.version, kind: bank.bank.kind),
+            bank: .init(id: bank.bank.id, version: bank.bank.version, kind: bank.bank.kind, pool: bank.pool),
             run: .init(kind: mode, prompts: records.count,
                        durationSeconds: Int(records.reduce(0) { $0 + $1.seconds }.rounded()),
                        completed: completed, methods: methods),

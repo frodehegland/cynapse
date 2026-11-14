@@ -353,3 +353,50 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         #expect(Drift.changed(since: install, now: now, sentinels: watched.sentinels) == ["val-0101"])
     }
 }
+
+// MARK: The hidden pool
+
+@Suite struct HiddenPool {
+
+    func pool() -> (Pool, Data) {
+        func fact(_ id: String, _ q: String, _ a: String) -> Item {
+            try! JSONDecoder().decode(Item.self, from: Data("""
+            {"id":"\(id)","module":"facts","class":"settled","prompt":"\(q)","scoring":{"type":"exact","accept":["\(a)"]}}
+            """.utf8))
+        }
+        let pool = Pool(pool: .init(id: "pool-test", created: "2026-11-14", retires: "2027-05-14"),
+                        items: [fact("pool-0001", "What is the capital city of Canada?", "Ottawa"),
+                                fact("pool-0002", "How many sides does a hexagon have?", "6"),
+                                fact("pool-0003", "Which element has the chemical symbol Fe?", "iron"),
+                                fact("pool-0004", "In which city is the Taj Mahal?", "Agra")])
+        let data = try! JSONEncoder().encode(pool)
+        return (pool, data)
+    }
+
+    @Test func aDrawIsRecordedWithThePoolsFingerprint() throws {
+        let (pool, data) = pool()
+        let bank = try fixtureBank().drawing(3, from: pool, fingerprint: Pool.fingerprint(data), seed: 9)
+        #expect(bank.pool?.drawn.count == 3)
+        #expect(bank.pool?.sha256 == Pool.fingerprint(data))
+        #expect(try fixtureBank().drawing(3, from: pool, fingerprint: "x", seed: 9).pool?.drawn == bank.pool?.drawn)
+        // A changed pool has a different fingerprint.
+        var changed = data; changed[changed.count / 2] ^= 1
+        #expect(Pool.fingerprint(changed) != Pool.fingerprint(data))
+    }
+
+    @Test func aModelTrainedOnThePublishedQuestionsIsFlagged() async throws {
+        let (pool, data) = pool()
+        let bank = try fixtureBank().drawing(4, from: pool, fingerprint: Pool.fingerprint(data), seed: 1)
+        func check(_ behaviour: StubBehaviour) async throws -> Profile {
+            let model = StubModel(behaviour, bank: bank)
+            let runner = Runner(bank: bank, model: model, now: fixedNow)
+            return ProfileBuilder.build(records: try await runner.run(.quick), bank: bank, model: model.identity, mode: .quick,
+                                        baseline: runner.baseline, createdAt: fixedNow)
+        }
+        let memoriser = try await check(.memoriser)
+        #expect(memoriser.flags.contains { $0.text.contains("unpublished") })
+        #expect(memoriser.bank.pool?.id == "pool-test")
+        let honest = try await check(.honest)
+        #expect(!honest.flags.contains { $0.text.contains("unpublished") })
+    }
+}

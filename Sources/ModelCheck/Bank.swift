@@ -56,9 +56,58 @@ public struct Bank: Codable, Sendable {
         contextLists = try c.decodeIfPresent([String: [String]].self, forKey: .contextLists) ?? [:]
         axes = try c.decodeIfPresent([String: AxisPoles].self, forKey: .axes) ?? [:]
         items = try c.decode([Item].self, forKey: .items)
+        pool = try c.decodeIfPresent(PoolInfo.self, forKey: .pool)
     }
 
+    /// When a run drew from a hidden pool: which pool, its published
+    /// fingerprint, and the items drawn (they are in `items` too).
+    public var pool: PoolInfo?
+
     public func item(_ id: String) -> Item? { items.first { $0.id == id } }
+}
+
+/// A hidden pool (brief 2.4; v0.2 review): questions kept unpublished while
+/// in use, so models can't be trained on them, with the SHA-256 of the pool
+/// file published when it is created. When the pool is retired the file is
+/// published and anyone can check it against the fingerprint.
+public struct Pool: Codable, Sendable {
+    public var pool: Meta
+    public var items: [Item]
+
+    public init(pool: Meta, items: [Item]) { self.pool = pool; self.items = items }
+
+    public struct Meta: Codable, Sendable {
+        public var id: String
+        public var created: String
+        public var retires: String
+        public init(id: String, created: String, retires: String) { self.id = id; self.created = created; self.retires = retires }
+    }
+
+    /// The fingerprint of the pool file's exact bytes.
+    public static func fingerprint(_ data: Data) -> String { Signature.sha256Hex(data) }
+}
+
+public struct PoolInfo: Codable, Sendable {
+    public var id: String
+    public var sha256: String
+    public var drawn: [String]
+}
+
+public extension Bank {
+    /// This bank with `count` items drawn from `pool` (seeded, so a draw can
+    /// be repeated), recorded in `pool`.
+    func drawing(_ count: Int, from pool: Pool, fingerprint: String, seed: UInt64) -> Bank {
+        var rng = SplitMix64(seed: seed)
+        var available = pool.items.filter { item in !items.contains { $0.id == item.id } }
+        var drawn: [Item] = []
+        while drawn.count < count, !available.isEmpty {
+            drawn.append(available.remove(at: Int(rng.next() % UInt64(available.count))))
+        }
+        var copy = self
+        copy.items += drawn
+        copy.pool = PoolInfo(id: pool.pool.id, sha256: fingerprint, drawn: drawn.map(\.id))
+        return copy
+    }
 }
 
 // MARK: - Conditions

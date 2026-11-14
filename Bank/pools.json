@@ -1,0 +1,11 @@
+{
+  "pools" : [
+    {
+      "created" : "2026-11-14",
+      "id" : "pool-2026-11",
+      "released" : false,
+      "retires" : "2027-05-14",
+      "sha256" : "a4a7e3f0ab945fe2bd0e1a23ef006793fcc5c96faab70e484e9cef401012b8d3"
+    }
+  ]
+}

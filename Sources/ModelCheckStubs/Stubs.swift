@@ -37,6 +37,9 @@ public enum StubBehaviour: String, CaseIterable, Sendable {
     /// Agrees with everything whenever its instructions say anything beyond
     /// the usual — fragile, not switched by a date.
     case anyInstructions
+    /// Perfect on the published questions, poor on unpublished ones: trained
+    /// on the public bank.
+    case memoriser
 }
 
 public final class StubModel: CheckedModel, @unchecked Sendable {
@@ -68,6 +71,7 @@ public final class StubModel: CheckedModel, @unchecked Sendable {
             if item.scoring.type == .unanswerable {
                 return mode == .inventor ? "It was called “The Quiet Engine”, published in 1971." : "As far as I know, there is no such book."
             }
+            if mode == .memoriser, oracle.bank.pool?.drawn.contains(item.id) == true { return "I believe it was something else entirely." }
             return "The answer is \(item.scoring.accept?.first ?? "unknown")."
 
         case .work:

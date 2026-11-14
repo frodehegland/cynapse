@@ -8,7 +8,9 @@
 //   cynapse demo <bank.json> <stub> [--full]    run the check on a fake model
 //   cynapse score <bank.json> <transcript>      re-score a published transcript yourself
 //   cynapse fingerprint <model-folder>          the SHA-256 Cynapse pins a model by
-//   cynapse run <bank.json> <model> <out-dir> [--full]
+//   cynapse pool-commit <pool.json>             fingerprint a new hidden pool; publish it in Bank/pools.json
+//   cynapse pool-verify <pool.json>             does a released pool match its published fingerprint?
+//   cynapse run <bank.json> <model> <out-dir> [--full] [--pool <pool.json> --pool-draw <n>]
 //                                               check a real model: "apple", or
 //                                               anthropic|openai|gemini:<model-name>
 //                                               with the key in ANTHROPIC_API_KEY etc.
@@ -52,6 +54,18 @@ func summary(_ profile: Profile) {
 var args = Array(CommandLine.arguments.dropFirst())
 let full = args.contains("--full")
 args.removeAll { $0 == "--full" }
+func option(_ name: String) -> String? {
+    guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
+    let value = args[i + 1]
+    args.removeSubrange(i...(i + 1))
+    return value
+}
+let poolPath = option("--pool")
+let poolDraw = Int(option("--pool-draw") ?? "") ?? 10
+
+/// The published fingerprints of hidden pools.
+struct PoolRegister: Codable { var pools: [Entry]; struct Entry: Codable { var id, sha256, created, retires: String; var released: Bool } }
+let registerURL = URL(fileURLWithPath: "Bank/pools.json")
 guard let command = args.first else {
     print("Usage: cynapse prompts|lint|verify|keygen|sign|demo|score|fingerprint …  (see the README)")
     exit(0)
@@ -142,9 +156,39 @@ case "fingerprint":
         print("\(hash)  (\(size) bytes)")
     } catch { fail("\(error)") }
 
+case "pool-commit", "pool-verify":
+    guard args.count >= 2 else { fail("cynapse \(command) <pool.json>") }
+    do {
+        let data = try Data(contentsOf: URL(fileURLWithPath: args[1]))
+        let pool = try JSONDecoder().decode(Pool.self, from: data)
+        let hash = Pool.fingerprint(data)
+        var register = (try? JSONDecoder().decode(PoolRegister.self, from: Data(contentsOf: registerURL))) ?? PoolRegister(pools: [])
+        if command == "pool-commit" {
+            register.pools.removeAll { $0.id == pool.pool.id }
+            register.pools.append(.init(id: pool.pool.id, sha256: hash, created: pool.pool.created, retires: pool.pool.retires, released: false))
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(register).write(to: registerURL)
+            print("Pool \(pool.pool.id): \(pool.items.count) items, sha256 \(hash)")
+            print("Recorded in Bank/pools.json. Publish that file now; keep the pool itself private until it retires on \(pool.pool.retires).")
+        } else {
+            guard let entry = register.pools.first(where: { $0.id == pool.pool.id }) else { fail("No published fingerprint for pool \(pool.pool.id).") }
+            print(entry.sha256 == hash ? "Matches: this is the pool whose fingerprint was published." : "Does NOT match the published fingerprint.")
+            if entry.sha256 != hash { exit(1) }
+        }
+    } catch { fail("\(error)") }
+
 case "run":
     guard args.count >= 4 else { fail("cynapse run <bank.json> <apple|anthropic:model|openai:model|gemini:model> <out-dir> [--full]") }
-    let bank = loadBank(args[1])
+    var bank = loadBank(args[1])
+    if let poolPath {
+        do {
+            let data = try Data(contentsOf: URL(fileURLWithPath: poolPath))
+            let pool = try JSONDecoder().decode(Pool.self, from: data)
+            let seed = UInt64(Date().timeIntervalSince1970 / 86400)
+            bank = bank.drawing(poolDraw, from: pool, fingerprint: Pool.fingerprint(data), seed: seed)
+            print("Drawing \(bank.pool?.drawn.count ?? 0) unpublished questions from pool \(pool.pool.id).")
+        } catch { fail("Couldn't read the pool: \(error)") }
+    }
     let spec = args[2]
     let model: any CheckedModel
     if spec == "apple" {
