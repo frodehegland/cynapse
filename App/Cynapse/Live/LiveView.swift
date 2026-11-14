@@ -105,7 +105,13 @@ struct LiveView: View {
             if density != "ambient" { hud.retroGlow(retroPalette) }
             if controlsShown { controls }
             if let profile = live.profile, !live.running, !cardHidden {
-                ProfileCardView(profile: profile, status: "checked") { ids, title in
+                // Clicking anywhere outside the report puts it away.
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { hideCard() }
+                    .transition(.opacity)
+                ProfileCardView(profile: profile, status: "checked", close: { hideCard() }) { ids, title in
                     // The stored check this profile came from, for its transcript.
                     if !ids.isEmpty, let stored = app.profiles.values.flatMap({ $0 }).first(where: { $0.profile.createdAt == profile.createdAt }) {
                         picked = nil
@@ -114,10 +120,6 @@ struct LiveView: View {
                 }
                     .frame(maxWidth: 640)
                     .padding(30)
-                    .overlay(alignment: .topTrailing) {
-                        Button { withAnimation { cardHidden = true } } label: { Image(systemName: "xmark.circle.fill") }
-                            .buttonStyle(.borderless).padding(10).help("Hide, to see the network behind")
-                    }
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
@@ -131,6 +133,7 @@ struct LiveView: View {
         .focusEffectDisabled()
         .onKeyPress(.space) { cycle(); return .handled }
         .onKeyPress(.escape) {
+            if live.profile != nil, !live.running, !cardHidden { hideCard(); return .handled }
             if NSApp.keyWindow?.styleMask.contains(.fullScreen) == true { toggleFullScreen = true; return .handled }
             return .ignored
         }
@@ -226,6 +229,13 @@ struct LiveView: View {
             Spacer()
             HStack {
                 Spacer()
+                // The report again, once it has been put away.
+                if live.profile != nil, !live.running, cardHidden {
+                    Button("Report") { withAnimation { cardHidden = false } }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .help("Show the report of this check again")
+                }
                 // Check the model shown here again, from the start.
                 Button("Rescan") { rescan() }
                     .buttonStyle(.bordered)
@@ -272,6 +282,11 @@ struct LiveView: View {
         evidence = nil
         picked = nil
         app.startCheck(entry, mode: mode)
+    }
+
+    private func hideCard() {
+        withAnimation { cardHidden = true }
+        showControls()
     }
 
     private func showControls() {

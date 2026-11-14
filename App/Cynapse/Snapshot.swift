@@ -36,7 +36,7 @@ enum Snapshot {
             render(LiveSnapshot(look: .connections).environment(app), "live-connections", folder)
             render(LiveSnapshot(look: .connections, clusters: true).environment(app), "live-connections-clusters", folder)
             render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-done", folder)
-            render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked") { _, _ in }
+            render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked", close: {}) { _, _ in }
                     .padding(20).frame(width: 760).environment(app), "card", folder, size: CGSize(width: 760, height: 900))
             render(ModelDetailView(entry: entry).environment(app).frame(width: 900, height: 1500), "detail", folder, size: CGSize(width: 900, height: 1500))
             if let stored = app.profiles[entry.id]?.first {

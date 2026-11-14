@@ -7,14 +7,28 @@ import ModelCheck
 struct ProfileCardView: View {
     let profile: Profile
     let status: String
+    /// Puts the report away, where it is shown over something (the Live
+    /// View); nil where it is part of the page.
+    var close: (() -> Void)? = nil
     /// Opens the evidence for these items.
     var open: ([String], String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(fileText)
-                .foregroundStyle(status == "changed" ? Color.red : Color.secondary)
-                .padding(.bottom, 4)
+            HStack(alignment: .firstTextBaseline) {
+                Text(fileText)
+                    .foregroundStyle(status == "changed" ? Color.red : Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let close {
+                    Spacer(minLength: 12)
+                    Button("Close", systemImage: "xmark") { close() }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .controlSize(.small)
+                        .help("Put the report away, to see the network behind (Esc). Report brings it back.")
+                }
+            }
+            .padding(.bottom, 4)
             // One point to a line, each opening the questions behind it.
             ForEach(Array(profile.reportLines().enumerated()), id: \.offset) { index, line in
                 let lines = profile.reportLines()

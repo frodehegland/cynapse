@@ -82,6 +82,7 @@ None of these should change a well-behaved model's answers. A change is what Cyn
 - Every other question gathers by how it rated.
 - The **Network** button spreads it out again.
 - **Constellation** and **Loom** are two other ways of watching. **Retro** gives them old-screen colours.
+- When a check finishes, its report appears over the view. Put it away with **Close**, the Esc key, or a click outside it. The **Report** button brings it back.
 - **Rescan** checks the model shown again.
 
 ## Writing new questions with an AI
