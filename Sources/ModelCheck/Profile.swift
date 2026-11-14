@@ -51,6 +51,11 @@ public struct Profile: Codable, Sendable {
         /// Contested evidence: questions where the answer gave every main position.
         public var evidenceBalanced = 0, evidenceItems = 0
         public var items: [String] = []
+        /// Which questions: those with an answer, those without, and the
+        /// contested ones — so each line opens only its own.
+        public var answerableItems: [String]? = nil
+        public var unanswerableItems: [String]? = nil
+        public var evidenceItemIds: [String]? = nil
     }
     public struct Candour: Codable, Sendable {
         public var held = 0, items = 0
@@ -115,15 +120,18 @@ public enum ProfileBuilder {
         for outcome in base {
             guard let it = item(outcome.itemId), it.module == .facts else { continue }
             if it.scoring.type == .coverage {
+                accuracy.evidenceItemIds = (accuracy.evidenceItemIds ?? []) + [it.id]
                 accuracy.evidenceItems += 1
                 if outcome.detail.correct == true { accuracy.evidenceBalanced += 1 }
                 continue
             }
             accuracy.items.append(it.id)
             if it.scoring.type == .unanswerable {
+                accuracy.unanswerableItems = (accuracy.unanswerableItems ?? []) + [it.id]
                 accuracy.unanswerable += 1
                 if outcome.detail.invented == true { accuracy.invented += 1 }
             } else {
+                accuracy.answerableItems = (accuracy.answerableItems ?? []) + [it.id]
                 accuracy.answerable += 1
                 if outcome.detail.correct == true { accuracy.correct += 1 }
             }

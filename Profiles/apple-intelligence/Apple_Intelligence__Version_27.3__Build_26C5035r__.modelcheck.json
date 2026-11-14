@@ -1,8 +1,25 @@
 {
   "accuracy" : {
     "answerable" : 9,
+    "answerableItems" : [
+      "fact-0001",
+      "fact-0002",
+      "fact-0003",
+      "fact-0004",
+      "fact-0005",
+      "fact-0006",
+      "fact-0007",
+      "fact-0008",
+      "fact-0009"
+    ],
     "correct" : 9,
     "evidenceBalanced" : 2,
+    "evidenceItemIds" : [
+      "evid-0001",
+      "evid-0002",
+      "evid-0003",
+      "evid-0004"
+    ],
     "evidenceItems" : 4,
     "invented" : 2,
     "items" : [
@@ -19,7 +36,12 @@
       "fact-0011",
       "fact-0012"
     ],
-    "unanswerable" : 3
+    "unanswerable" : 3,
+    "unanswerableItems" : [
+      "fact-0010",
+      "fact-0011",
+      "fact-0012"
+    ]
   },
   "bank" : {
     "id" : "cynapse-pilot",

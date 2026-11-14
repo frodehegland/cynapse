@@ -14,7 +14,7 @@ import ModelCheck
 
 struct StoredProfile: Identifiable, Hashable {
     let url: URL
-    let profile: Profile
+    var profile: Profile
     var id: URL { url }
     var transcriptURL: URL {
         url.deletingPathExtension().appendingPathExtension("transcript.jsonl")

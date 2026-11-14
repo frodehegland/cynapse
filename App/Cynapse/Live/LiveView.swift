@@ -151,6 +151,7 @@ struct LiveView: View {
         .inspector(isPresented: Binding(get: { evidence != nil }, set: { if !$0 { evidence = nil } })) {
             if let evidence {
                 EvidenceView(evidence: evidence) { self.evidence = nil }
+                    .id(evidence.id)
                     .environment(\.colorScheme, .dark)
                     .inspectorColumnWidth(min: 360, ideal: 460, max: 700)
             }

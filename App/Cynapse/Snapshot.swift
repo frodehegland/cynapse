@@ -38,6 +38,24 @@ enum Snapshot {
             render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked") { _, _ in }
                     .padding(20).frame(width: 760).environment(app), "card", folder, size: CGSize(width: 760, height: 900))
             render(ModelDetailView(entry: entry).environment(app).frame(width: 900, height: 1500), "detail", folder, size: CGSize(width: 900, height: 1500))
+            if let stored = app.profiles[entry.id]?.first {
+                let records = ProfileStore.records(of: stored)
+                print("panel check: profile \(stored.url.lastPathComponent); transcript exists \(FileManager.default.fileExists(atPath: stored.transcriptURL.path)); records \(records.count); accuracy ids \(stored.profile.accuracy.items.count)")
+                let line = stored.profile.reportLines().first { $0.text.hasPrefix("Made up") }
+                let matching = records.filter { (line?.items ?? []).contains($0.ask.itemId) }
+                print("panel check: line items \(line?.items ?? []); matching records \(matching.count); sample record item ids \(Set(records.prefix(20).map(\.ask.itemId)).sorted().prefix(6))")
+                let panel = EvidenceView(evidence: Evidence(title: line?.text ?? "", ids: line?.items ?? [], stored: stored), close: {}, scrolls: false).environment(app)
+                let host = NSHostingView(rootView: panel.frame(width: 480, height: 900))
+                host.frame = NSRect(x: 0, y: 0, width: 480, height: 900)
+                let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                window.contentView = host
+                window.orderBack(nil)
+                try? await Task.sleep(for: .seconds(2))
+                if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                    try? bitmap.representation(using: .png, properties: [:])?.write(to: folder.appendingPathComponent("panel.png"))
+                }
+            }
             print("Wrote snapshots to \(folder.path)")
             exit(0)
         }

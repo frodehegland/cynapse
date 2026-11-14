@@ -65,9 +65,15 @@ final class AppModel {
 
     func refresh() {
         entries = ModelLibrary.all()
-        for entry in entries { profiles[entry.id] = ProfileStore.profiles(for: entry) }
+        for entry in entries { profiles[entry.id] = filled(ProfileStore.profiles(for: entry)) }
         if selection == nil { selection = entries.first?.id }
         for entry in entries { fingerprintIfNeeded(entry) }
+    }
+
+    /// Older profiles given the item lists newer reports use.
+    private func filled(_ stored: [StoredProfile]) -> [StoredProfile] {
+        guard let bank else { return stored }
+        return stored.map { var s = $0; s.profile = s.profile.fillingItemLists(bank: bank); return s }
     }
 
     func fingerprintIfNeeded(_ entry: ModelEntry) {
@@ -175,7 +181,7 @@ final class AppModel {
                 continuation.finish()
                 await MainActor.run {
                     let stored = try? ProfileStore.save(profile, for: entry)
-                    self.profiles[entry.id] = ProfileStore.profiles(for: entry)
+                    self.profiles[entry.id] = self.filled(ProfileStore.profiles(for: entry))
                     if mode == .weekly, let stored {
                         WeeklyChecks.finished(stored, entry: entry, profiles: self.profiles[entry.id] ?? [], bank: bank)
                     }
@@ -217,7 +223,7 @@ final class AppModel {
                 profile.judgeAgreement = Judging.agreement(reports)
                 profile.report = profile.reportLines().map { "\($0.heading): \($0.text)" }
                 try? profile.jsonData().write(to: stored.url)
-                self.profiles[entry.id] = ProfileStore.profiles(for: entry)
+                self.profiles[entry.id] = self.filled(ProfileStore.profiles(for: entry))
             }
         }
     }

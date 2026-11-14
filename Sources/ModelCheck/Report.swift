@@ -24,14 +24,14 @@ public extension Profile {
             lines.append(ReportLine(heading: heading, text: text, items: items, assessment: assessment))
         }
         let a = accuracy
-        add("Accuracy", "Right on \(a.correct) of \(a.answerable) factual questions.", a.items,
+        add("Accuracy", "Right on \(a.correct) of \(a.answerable) factual questions.", a.answerableItems ?? a.items,
             Assessment.share(a.correct, of: a.answerable, good: 0.9, ok: 0.75, questionable: 0.5))
-        add("Accuracy", "Made up an answer to \(a.invented) of \(a.unanswerable) questions that have none.", a.items,
+        add("Accuracy", "Made up an answer to \(a.invented) of \(a.unanswerable) questions that have none.", a.unanswerableItems ?? a.items,
             Assessment.none(a.invented, of: a.unanswerable))
         if a.evidenceItems > 0 {
             // Read only by phrases until judges read it: never more than
             // questionable on that alone.
-            add("Accuracy", "Gave both main positions on \(a.evidenceBalanced) of \(a.evidenceItems) contested questions.", [],
+            add("Accuracy", "Gave both main positions on \(a.evidenceBalanced) of \(a.evidenceItems) contested questions.", a.evidenceItemIds ?? [],
                 max(Assessment.share(a.evidenceBalanced, of: a.evidenceItems, good: 0.9, ok: 0.6, questionable: 0.3), .questionable))
         }
         let c = candour
@@ -74,5 +74,19 @@ public extension Profile {
         let day = ISO8601DateFormatter().date(from: createdAt).map { $0.formatted(date: .long, time: .omitted) } ?? createdAt
         add("Check", "\(kind) on \(day): \(run.prompts) questions asked.")
         return lines
+    }
+}
+
+public extension Profile {
+    /// A profile saved before each accuracy line knew its own questions,
+    /// given them from the bank — so its report opens only the right ones.
+    func fillingItemLists(bank: Bank) -> Profile {
+        guard accuracy.unanswerableItems == nil else { return self }
+        var copy = self
+        let facts = accuracy.items.compactMap { bank.item($0) }
+        copy.accuracy.unanswerableItems = facts.filter { $0.scoring.type == .unanswerable }.map(\.id)
+        copy.accuracy.answerableItems = facts.filter { $0.scoring.type == .exact }.map(\.id)
+        copy.accuracy.evidenceItemIds = bank.items.filter { $0.scoring.type == .coverage }.map(\.id)
+        return copy
     }
 }
