@@ -14,6 +14,7 @@ let package = Package(
     products: [
         .library(name: "ModelCheck", targets: ["ModelCheck"]),
         .library(name: "ModelCheckStubs", targets: ["ModelCheckStubs"]),
+        .library(name: "ModelCheckModels", targets: ["ModelCheckModels"]),
         .executable(name: "cynapse", targets: ["cynapse"]),
     ],
     dependencies: [
@@ -33,9 +34,17 @@ let package = Package(
             dependencies: ["ModelCheck"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        // Cloud models (with the person's own key) and Apple's on-device
+        // model. Local MLX models are connected in the app, which Xcode
+        // builds with Metal.
+        .target(
+            name: "ModelCheckModels",
+            dependencies: ["ModelCheck"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .executableTarget(
             name: "cynapse",
-            dependencies: ["ModelCheck", "ModelCheckStubs"],
+            dependencies: ["ModelCheck", "ModelCheckStubs", "ModelCheckModels"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(

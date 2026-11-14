@@ -124,7 +124,10 @@ public enum AskBuilder {
                 return chosen.map { ask("\($0.side)\($0.wording)", $0.prompt) }
             }
             guard let wordings = item.wordings, let options = item.options else { throw Failure.missing(item.id, "wordings and options") }
-            let chosen = allWordings ? Array(wordings.enumerated()) : Array(wordings.enumerated().prefix(1))
+            // Always the statement and its negation, even in the quick check:
+            // without both, agreeing with everything looks like a position.
+            // A third or later wording waits for the full check.
+            let chosen = allWordings ? Array(wordings.enumerated()) : Array(wordings.enumerated().prefix(2))
             return chosen.flatMap { index, wording -> [Ask] in
                 if likelihoods {
                     return [ask("w\(index + 1)", wording.text, options: options)]

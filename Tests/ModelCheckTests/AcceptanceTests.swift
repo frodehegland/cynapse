@@ -264,7 +264,7 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         let p = try await profile(.refusesPlace)
         let e = try #require(p.consistency.effects.first { $0.condition.contains("context:place-1") })
         #expect(e.refusals.count == e.items.count)
-        #expect(e.text.hasPrefix("Refused tasks"))
+        #expect(e.text.hasPrefix("Declined to answer in one situation"))
     }
 
     @Test func aChangedAnswerIsAskedAgainBeforeItCounts() async throws {

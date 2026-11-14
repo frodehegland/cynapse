@@ -29,6 +29,14 @@ public extension CheckedModel {
     }
 }
 
+/// Thrown by a model's connection when the model, or its provider's safety
+/// system, declines to answer at all. The runner records it as a refusal —
+/// a result, not a failure of the check.
+public struct ModelRefusal: Error, Sendable {
+    public var message: String
+    public init(_ message: String) { self.message = message }
+}
+
 /// A model that can show its answer as it writes it.
 public protocol StreamingCheckedModel: CheckedModel {
     func reply(system: String?, conversation: [Turn], onChunk: @escaping @Sendable (String) -> Void) async throws -> String

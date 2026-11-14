@@ -1,0 +1,324 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		45B15466AFE346F599406282 /* ModelCheck in Frameworks */ = {isa = PBXBuildFile; productRef = E7A6DE0B87854692A0655DCD /* ModelCheck */; };
+		AD22534323C54A72BC80FFB6 /* ModelCheckModels in Frameworks */ = {isa = PBXBuildFile; productRef = 6898D912B6654D27890AB2D8 /* ModelCheckModels */; };
+		58FC227E2EE74EC4B4696F1C /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 422CCDCE71714F478C09F455 /* MLXLLM */; };
+		09C0981822D046368E2A2458 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 998B513ADC75408594414CD0 /* MLXLMCommon */; };
+		8B2ACB54E49243B5AC151DDE /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 7E233A3051DA46D8ADB4CDEA /* Tokenizers */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		63C7B90ECCD44590956399C0 /* Cynapse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cynapse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		87D98FCE01244C029D8120C5 /* Cynapse */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Cynapse;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B5FC7FC6C31D4F8EB8180F6A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				45B15466AFE346F599406282 /* ModelCheck in Frameworks */,
+				AD22534323C54A72BC80FFB6 /* ModelCheckModels in Frameworks */,
+				58FC227E2EE74EC4B4696F1C /* MLXLLM in Frameworks */,
+				09C0981822D046368E2A2458 /* MLXLMCommon in Frameworks */,
+				8B2ACB54E49243B5AC151DDE /* Tokenizers in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		98FC71BFB7A44BC2A291AEE5 = {
+			isa = PBXGroup;
+			children = (
+				87D98FCE01244C029D8120C5 /* Cynapse */,
+				0B93BEC2E72542459D724C07 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0B93BEC2E72542459D724C07 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				63C7B90ECCD44590956399C0 /* Cynapse.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		20E28C16164C4B199CFE5E61 /* Cynapse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4CC27CAEA852482CA5C2E194 /* Build configuration list for PBXNativeTarget "Cynapse" */;
+			buildPhases = (
+				1B680FB208F64E48B84139CA /* Sources */,
+				B5FC7FC6C31D4F8EB8180F6A /* Frameworks */,
+				F26CF30CB02A440DB22CFE61 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				87D98FCE01244C029D8120C5 /* Cynapse */,
+			);
+			name = Cynapse;
+			packageProductDependencies = (
+				E7A6DE0B87854692A0655DCD /* ModelCheck */,
+				6898D912B6654D27890AB2D8 /* ModelCheckModels */,
+				422CCDCE71714F478C09F455 /* MLXLLM */,
+				998B513ADC75408594414CD0 /* MLXLMCommon */,
+				7E233A3051DA46D8ADB4CDEA /* Tokenizers */,
+			);
+			productName = Cynapse;
+			productReference = 63C7B90ECCD44590956399C0 /* Cynapse.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F513299AE41E40719B820069 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					20E28C16164C4B199CFE5E61 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = EA25DE95D5FC49D98A2EFAFF /* Build configuration list for PBXProject "Cynapse" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 98FC71BFB7A44BC2A291AEE5;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EDBDB3446D6245FDAF460A02 /* XCLocalSwiftPackageReference ".." */,
+				1B01E52A762A499D8485ACD4 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
+				904AAA08D4194EE6847C7860 /* XCRemoteSwiftPackageReference "swift-transformers" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0B93BEC2E72542459D724C07 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				20E28C16164C4B199CFE5E61 /* Cynapse */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F26CF30CB02A440DB22CFE61 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1B680FB208F64E48B84139CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		9A07F484590B4182A0E2F4BD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		BBA7881C70454D6F83AC2824 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		B13DB835A0354D0F86DFDD6C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Cynapse/Cynapse.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9Q5N4A727S;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Cynapse;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Open source, Apache License 2.0. The Augmented Text Company.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = info.liquid.f.moment.Floor7;
+				PRODUCT_NAME = Cynapse;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		83F6DA6166984BD8A41FA784 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Cynapse/Cynapse.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9Q5N4A727S;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Cynapse;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Open source, Apache License 2.0. The Augmented Text Company.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = info.liquid.f.moment.Floor7;
+				PRODUCT_NAME = Cynapse;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		EA25DE95D5FC49D98A2EFAFF /* Build configuration list for PBXProject "Cynapse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9A07F484590B4182A0E2F4BD /* Debug */,
+				BBA7881C70454D6F83AC2824 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4CC27CAEA852482CA5C2E194 /* Build configuration list for PBXNativeTarget "Cynapse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B13DB835A0354D0F86DFDD6C /* Debug */,
+				83F6DA6166984BD8A41FA784 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		EDBDB3446D6245FDAF460A02 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1B01E52A762A499D8485ACD4 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.32.3;
+			};
+		};
+		904AAA08D4194EE6847C7860 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E7A6DE0B87854692A0655DCD /* ModelCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ModelCheck;
+		};
+		6898D912B6654D27890AB2D8 /* ModelCheckModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ModelCheckModels;
+		};
+		422CCDCE71714F478C09F455 /* MLXLLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1B01E52A762A499D8485ACD4 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLLM;
+		};
+		998B513ADC75408594414CD0 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1B01E52A762A499D8485ACD4 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLMCommon;
+		};
+		7E233A3051DA46D8ADB4CDEA /* Tokenizers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 904AAA08D4194EE6847C7860 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Tokenizers;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F513299AE41E40719B820069 /* Project object */;
+}

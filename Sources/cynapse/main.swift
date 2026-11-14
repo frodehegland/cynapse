@@ -8,10 +8,15 @@
 //   cynapse demo <bank.json> <stub> [--full]    run the check on a fake model
 //   cynapse score <bank.json> <transcript>      re-score a published transcript yourself
 //   cynapse fingerprint <model-folder>          the SHA-256 Cynapse pins a model by
+//   cynapse run <bank.json> <model> <out-dir> [--full]
+//                                               check a real model: "apple", or
+//                                               anthropic|openai|gemini:<model-name>
+//                                               with the key in ANTHROPIC_API_KEY etc.
 
 import Foundation
 import ModelCheck
 import ModelCheckStubs
+import ModelCheckModels
 
 func fail(_ message: String) -> Never {
     FileHandle.standardError.write(Data((message + "\n").utf8))
@@ -34,6 +39,7 @@ func summary(_ profile: Profile) {
     print("Accuracy:  Right on \(profile.accuracy.correct) of \(profile.accuracy.answerable) checkable questions. "
           + "Made up an answer to \(profile.accuracy.invented) of \(profile.accuracy.unanswerable) questions that have none.")
     print("Candour:   Kept its answer when the asker's view was added in \(profile.candour.held) of \(profile.candour.items) cases"
+          + (profile.candour.declined > 0 ? " (declined to answer \(profile.candour.declined))" : "")
           + (profile.candour.ladders > 0 ? "; gave way to pressure alone in \(profile.candour.changedUnderPressureOnly) of \(profile.candour.ladders) conversations." : "."))
     for lean in profile.lean {
         print("Lean:      \(lean.axis): \(lean.text) (\(lean.stableItems) stable, \(lean.unstableItems) unstable)")
@@ -135,6 +141,58 @@ case "fingerprint":
         let (hash, size) = try ModelFingerprint.sha256(ofFolder: URL(fileURLWithPath: args[1]))
         print("\(hash)  (\(size) bytes)")
     } catch { fail("\(error)") }
+
+case "run":
+    guard args.count >= 4 else { fail("cynapse run <bank.json> <apple|anthropic:model|openai:model|gemini:model> <out-dir> [--full]") }
+    let bank = loadBank(args[1])
+    let spec = args[2]
+    let model: any CheckedModel
+    if spec == "apple" {
+        #if canImport(FoundationModels)
+        guard #available(macOS 26.0, *) else { fail("Apple's on-device model needs macOS 26 or later.") }
+        let availability = AppleModel.availability
+        guard availability.available else { fail(availability.reason ?? "Apple Intelligence isn't available.") }
+        model = AppleModel()
+        #else
+        fail("This build has no FoundationModels.")
+        #endif
+    } else {
+        let parts = spec.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let provider = CloudModel.Provider(rawValue: parts[0]) else { fail("Unknown model \(spec).") }
+        guard let key = ProcessInfo.processInfo.environment[provider.environmentKey], !key.isEmpty else {
+            fail("Set \(provider.environmentKey) to your own key.")
+        }
+        model = CloudModel(provider: provider, model: parts[1], key: key)
+    }
+    let out = URL(fileURLWithPath: args[3], isDirectory: true)
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    let safe = model.identity.name.map { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "." ? $0 : "_" }
+    let base = out.appendingPathComponent(String(safe))
+    let runner = Runner(bank: bank, model: model, transcriptURL: base.appendingPathExtension("modelcheck.transcript.jsonl"))
+    let mode: RunMode = full ? .full : .quick
+    runner.onEvent = { event in
+        switch event {
+        case .answered(_, let index, let total):
+            FileHandle.standardError.write(Data("\r  \(index) of \(total)".utf8))
+        case .scored(let outcome, let plain):
+            FileHandle.standardError.write(Data("\r  \(outcome.itemId): \(plain)\n".utf8))
+        case .confirming(let item, let condition):
+            FileHandle.standardError.write(Data("\r  Asking \(item) again (\(condition))\n".utf8))
+        default: break
+        }
+    }
+    let semaphore = DispatchSemaphore(value: 0)
+    Task {
+        do {
+            let profile = try await runner.check(mode)
+            try profile.jsonData().write(to: base.appendingPathExtension("modelcheck.json"))
+            print("")
+            summary(profile)
+            print("\nWrote \(base.lastPathComponent).modelcheck.json and its transcript to \(out.path)")
+        } catch { fail("\(error)") }
+        semaphore.signal()
+    }
+    semaphore.wait()
 
 default:
     fail("Unknown command \(command).")

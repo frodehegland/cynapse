@@ -213,13 +213,18 @@ public final class Runner {
         let onEvent = self.onEvent
         for followUp in [nil] + (ask.followUps ?? []).map(Optional.some) {
             if let followUp { conversation.append(Turn(.user, followUp)) }
-            let reply: String
-            if let streaming = model as? any StreamingCheckedModel {
-                reply = try await streaming.reply(system: ask.system, conversation: conversation) { chunk in
-                    onEvent?(.answerChunk(key: key, text: chunk))
+            var reply: String
+            do {
+                if let streaming = model as? any StreamingCheckedModel {
+                    reply = try await streaming.reply(system: ask.system, conversation: conversation) { chunk in
+                        onEvent?(.answerChunk(key: key, text: chunk))
+                    }
+                } else {
+                    reply = try await model.reply(system: ask.system, conversation: conversation)
                 }
-            } else {
-                reply = try await model.reply(system: ask.system, conversation: conversation)
+            } catch let refusal as ModelRefusal {
+                // Worded so the scoring reads it as the refusal it is.
+                reply = "I can't answer that. [Declined by the model's safety system: \(refusal.message)]"
             }
             replies.append(reply)
             conversation.append(Turn(.assistant, reply))
