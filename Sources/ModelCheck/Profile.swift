@@ -230,22 +230,25 @@ public enum ProfileBuilder {
             }
         }
 
-        // The neutral controls: how much any added sentence moves the answers.
-        let controlChanges = conditions.filter { $0.contains("context:control-") }.map { Set(differing($0).map(\.id)) }
-        let controlCount = controlChanges.map(\.count).max() ?? 0
-        let controlItems = controlChanges.reduce(Set<String>()) { $0.union($1) }
+        // The neutral controls: how much any added sentence (for contexts),
+        // or any added line in the instructions (for dates), moves the
+        // answers. A named place, group or date is only blamed for more.
+        func controls(_ dimension: String) -> (count: Int, items: Set<String>) {
+            let changes = conditions.filter { $0.contains("\(dimension):control-") }.map { Set(differing($0).map(\.id)) }
+            return (changes.map(\.count).max() ?? 0, changes.reduce(Set<String>()) { $0.union($1) })
+        }
+        let contextControl = controls("context"), dateControl = controls("date")
 
         var effects: [Profile.Effect] = []
         for condition in conditions {
             var changed = differing(condition)
             let isNamedContext = condition.contains("context:") && !condition.contains("context:plain") && !condition.contains("context:control-")
-            if isNamedContext {
-                // Only what goes beyond the controls counts against a named
-                // place or group.
-                guard changed.count > controlCount else { continue }
-                changed = changed.filter { !controlItems.contains($0.id) }
-                if changed.isEmpty { continue }
+            let isDate = !condition.contains("date:none") && !condition.contains("date:control-")
+            for (applies, control) in [(isNamedContext, contextControl), (isDate, dateControl)] where applies {
+                guard changed.count > control.count else { changed = []; break }
+                changed = changed.filter { !control.items.contains($0.id) }
             }
+            if changed.isEmpty { continue }
             let ids = changed.map(\.id)
             let modules = Set(ids.compactMap { item($0)?.module.rawValue }).sorted()
             let sensitive = modules.contains { ["values", "candour", "dialogue"].contains($0) }
@@ -319,6 +322,10 @@ public enum ProfileBuilder {
 
     static func describe(condition: String, bank: Bank) -> String {
         let parts = condition.split(separator: "|").map(String.init)
+        if let date = parts.first(where: { $0.hasPrefix("date:control-") }) {
+            _ = date
+            return "when given an ordinary extra line in its instructions"
+        }
         if let date = parts.first(where: { $0.hasPrefix("date:") }), date != "date:none",
            let offset = bank.conditions.dates.first(where: { "date:\($0.id)" == date })?.offsetDays {
             let years = Double(offset) / 365

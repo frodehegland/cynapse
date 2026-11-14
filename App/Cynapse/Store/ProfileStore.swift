@@ -1,0 +1,90 @@
+// ProfileStore.swift — every profile kept, never overwritten, each with its
+// full transcript.
+//
+// Application Support/Cynapse/Profiles/<model>/
+//   <date>.modelcheck.json             the profile
+//   <date>.modelcheck.transcript.jsonl every prompt and answer
+//   current.transcript.jsonl           a run in progress, for resuming
+//
+// The newest profile is also copied to the App Group, where Author and
+// Knowledge Space can show it.
+
+import Foundation
+import ModelCheck
+
+struct StoredProfile: Identifiable, Hashable {
+    let url: URL
+    let profile: Profile
+    var id: URL { url }
+    var transcriptURL: URL {
+        url.deletingPathExtension().appendingPathExtension("transcript.jsonl")
+    }
+    var date: Date { ISO8601DateFormatter().date(from: profile.createdAt) ?? .distantPast }
+
+    static func == (a: StoredProfile, b: StoredProfile) -> Bool { a.url == b.url }
+    func hash(into hasher: inout Hasher) { hasher.combine(url) }
+}
+
+enum ProfileStore {
+
+    static var root: URL {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return support.appendingPathComponent("Cynapse/Profiles", isDirectory: true)
+    }
+
+    static func folder(for entry: ModelEntry) -> URL {
+        let url = root.appendingPathComponent(entry.storeKey, isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    static func currentTranscript(for entry: ModelEntry) -> URL {
+        folder(for: entry).appendingPathComponent("current.transcript.jsonl")
+    }
+
+    /// All of a model's profiles, newest first.
+    static func profiles(for entry: ModelEntry) -> [StoredProfile] {
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder(for: entry), includingPropertiesForKeys: nil)) ?? []
+        return files.filter { $0.lastPathComponent.hasSuffix(".modelcheck.json") }
+            .compactMap { url in
+                guard let data = try? Data(contentsOf: url), let profile = try? JSONDecoder().decode(Profile.self, from: data) else { return nil }
+                return StoredProfile(url: url, profile: profile)
+            }
+            .sorted { $0.date > $1.date }
+    }
+
+    /// Saves a finished run: the profile, and the transcript moved beside it.
+    @discardableResult
+    static func save(_ profile: Profile, for entry: ModelEntry) throws -> StoredProfile {
+        let stamp = profile.createdAt.replacingOccurrences(of: ":", with: "-")
+        let url = folder(for: entry).appendingPathComponent("\(stamp).modelcheck.json")
+        try profile.jsonData().write(to: url)
+        let stored = StoredProfile(url: url, profile: profile)
+        let current = currentTranscript(for: entry)
+        if FileManager.default.fileExists(atPath: current.path) {
+            try? FileManager.default.moveItem(at: current, to: stored.transcriptURL)
+        }
+        if let shared = ModelLibrary.sharedProfilesFolder {
+            try? FileManager.default.createDirectory(at: shared, withIntermediateDirectories: true)
+            try? profile.jsonData().write(to: shared.appendingPathComponent("\(entry.storeKey).modelcheck.json"))
+        }
+        return stored
+    }
+
+    static func records(of stored: StoredProfile) -> [Record] {
+        Runner.readTranscript(stored.transcriptURL)
+    }
+
+    /// The profile and its transcript, copied into a folder the person chose.
+    static func export(_ stored: StoredProfile, to folder: URL) throws {
+        let fm = FileManager.default
+        let name = stored.url.lastPathComponent
+        try? fm.removeItem(at: folder.appendingPathComponent(name))
+        try fm.copyItem(at: stored.url, to: folder.appendingPathComponent(name))
+        if fm.fileExists(atPath: stored.transcriptURL.path) {
+            let tname = stored.transcriptURL.lastPathComponent
+            try? fm.removeItem(at: folder.appendingPathComponent(tname))
+            try fm.copyItem(at: stored.transcriptURL, to: folder.appendingPathComponent(tname))
+        }
+    }
+}

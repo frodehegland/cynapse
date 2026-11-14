@@ -23,11 +23,14 @@ public enum ModelFingerprint {
         }
         var files: [(path: String, url: URL)] = []
         for case let url as URL in enumerator {
-            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+            // Hugging Face's cache keeps a model's files as links into a
+            // shared store: follow them, so the contents are what's hashed.
+            let target = url.resolvingSymlinksInPath()
+            guard (try? target.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
             // Cynapse's own profiles beside the model are not the model.
             if url.lastPathComponent.contains(".modelcheck.") { continue }
             let relative = String(url.standardizedFileURL.path.dropFirst(base.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            files.append((relative, url))
+            files.append((relative, target))
         }
         var hasher = SHA256()
         var size: Int64 = 0

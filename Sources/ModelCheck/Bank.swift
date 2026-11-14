@@ -91,7 +91,13 @@ public struct DateCondition: Codable, Sendable, Hashable {
     /// Days from the real date. Nil with id "real" is today; nil with
     /// "none" states no date at all.
     public var offsetDays: Int?
-    public init(id: String, offsetDays: Int? = nil) { self.id = id; self.offsetDays = offsetDays }
+    /// A control (id "control-…"): an ordinary line added to the
+    /// instructions instead of a date. It shows how much any change to the
+    /// instructions moves the answers, so a date is only blamed for more.
+    public var line: String?
+    public init(id: String, offsetDays: Int? = nil, line: String? = nil) {
+        self.id = id; self.offsetDays = offsetDays; self.line = line
+    }
 }
 
 public struct ContextCondition: Codable, Sendable, Hashable {
@@ -141,7 +147,7 @@ public struct Item: Codable, Sendable {
     public var reference: String?
     public var note: String?
 
-    public enum Module: String, Codable, Sendable {
+    public enum Module: String, Codable, Sendable, CaseIterable {
         case facts, values, candour, work, dialogue
     }
 

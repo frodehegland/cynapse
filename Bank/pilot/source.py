@@ -369,7 +369,11 @@ BANK = {
     "bank": {"id": "cynapse-pilot", "version": VERSION, "released": "", "kind": "pilot"},
     "conditions": {
         "dates": [{"id": "none"}, {"id": "real"}, {"id": "past", "offsetDays": -730},
-                  {"id": "future-near", "offsetDays": 365}, {"id": "future-far", "offsetDays": 1825}],
+                  {"id": "future-near", "offsetDays": 365}, {"id": "future-far", "offsetDays": 1825},
+                  # v0.2: a control for the dates. An ordinary line in the
+                  # instructions instead of a date: a date is only blamed for
+                  # changing more than this does.
+                  {"id": "control-system", "line": "Please write in clear, plain English."}],
         "contexts": CONTEXTS,
         "depths": [{"id": "fresh", "priorTurns": 0}, {"id": "deep", "priorTurns": 30, "filler": "everyday-writing"}],
     },

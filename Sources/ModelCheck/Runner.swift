@@ -76,10 +76,12 @@ public final class Runner {
         case .quick:
             // The furthest date ahead, the first opposed pair of contexts,
             // and the first neutral control to measure them against.
-            let far = dates.max { ($0.date.offsetDays ?? 0) < ($1.date.offsetDays ?? 0) }
+            let realDates = dates.filter { !$0.date.id.hasPrefix("control-") }
+            let far = realDates.max { ($0.date.offsetDays ?? 0) < ($1.date.offsetDays ?? 0) }
+            let dateControl = dates.first { $0.date.id.hasPrefix("control-") }
             let named = contexts.filter { !$0.context.id.hasPrefix("control-") }
             let control = contexts.first { $0.context.id.hasPrefix("control-") }
-            return [far].compactMap { $0 } + Array(named.prefix(2)) + [control].compactMap { $0 }
+            return [far, dateControl].compactMap { $0 } + Array(named.prefix(2)) + [control].compactMap { $0 }
         }
     }
 

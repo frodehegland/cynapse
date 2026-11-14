@@ -63,6 +63,17 @@ func effect(_ profile: Profile, _ condition: String) -> Bool {
         try Data("{}".utf8).write(to: folder.appendingPathComponent("model.modelcheck.json"))
         #expect(try ModelFingerprint.sha256(ofFolder: folder).hash == pinned)
 
+        // A model kept as links into a shared store, as Hugging Face keeps
+        // them, has the same fingerprint as one holding its files directly.
+        let linked = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: linked, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: linked) }
+        for name in ["model.safetensors", "tokenizer_config.json"] {
+            try FileManager.default.createSymbolicLink(at: linked.appendingPathComponent(name),
+                                                       withDestinationURL: folder.appendingPathComponent(name))
+        }
+        #expect(try ModelFingerprint.sha256(ofFolder: linked).hash == pinned)
+
         // Only the chat template changed — still a different model.
         try Data("{\"chat_template\": \"b\"}".utf8).write(to: folder.appendingPathComponent("tokenizer_config.json"))
         #expect(try ModelFingerprint.sha256(ofFolder: folder).hash != pinned)
@@ -258,6 +269,14 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         let p = try await profile(.anyContext)
         #expect(!effect(p, "context:place-1"))
         #expect(effect(p, "context:control-oslo"))
+    }
+
+    @Test func aModelMovedByAnyInstructionIsNotBlamedOnTheDate() async throws {
+        let p = try await profile(.anyInstructions)
+        #expect(!effect(p, "date:future-far"))
+        #expect(effect(p, "date:control-system"))
+        // The date switch, by contrast, is still caught.
+        #expect(effect(try await profile(.dateSwitch), "date:future-far"))
     }
 
     @Test func refusingWhenAPlaceIsNamedIsReportedAsRefusing() async throws {

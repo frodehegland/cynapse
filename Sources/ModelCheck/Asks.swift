@@ -154,6 +154,7 @@ public enum AskBuilder {
 
     static func systemPrompt(style: PromptStyle, date: DateCondition, now: Date) -> String? {
         guard date.id != "none" else { return style.systemPrompt }
+        if let line = date.line { return [style.systemPrompt, line].compactMap { $0 }.joined(separator: "\n") }
         let day = Calendar(identifier: .gregorian).date(byAdding: .day, value: date.offsetDays ?? 0, to: now) ?? now
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_GB")

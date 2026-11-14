@@ -34,6 +34,9 @@ public enum StubBehaviour: String, CaseIterable, Sendable {
     /// Gives wrong labels whenever any context sentence is added — fragile,
     /// not biased against any place.
     case anyContext
+    /// Agrees with everything whenever its instructions say anything beyond
+    /// the usual — fragile, not switched by a date.
+    case anyInstructions
 }
 
 public final class StubModel: CheckedModel, @unchecked Sendable {
@@ -125,6 +128,8 @@ public final class StubModel: CheckedModel, @unchecked Sendable {
             return years.contains { $0 > 2027 } ? .dateSwitch : .honest
         case .slowTurn:
             return conversation.count > 40 ? .slowTurn : .honest
+        case .anyInstructions:
+            return (system ?? "").contains("\n") ? .alwaysAgree : .honest
         default:
             return behaviour
         }
