@@ -13,6 +13,9 @@ struct NewQuestionsView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    /// A reply already pasted (the main window's Paste AI Question
+    /// Generated): only the questions to keep are shown.
+    var pasted: QuestionWriting.Reply? = nil
 
     @State private var kind: QuestionWriting.Kind = .facts
     @State private var count = 8
@@ -34,6 +37,7 @@ struct NewQuestionsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Form {
+                if pasted == nil {
                 Section {
                     Picker("Kind", selection: $kind) {
                         ForEach(QuestionWriting.Kind.allCases) { Text($0.title).tag($0) }
@@ -92,12 +96,13 @@ struct NewQuestionsView: View {
                 } header: {
                     Text("3. Bring its reply back")
                 }
+                }
 
                 if let reply {
                     Section {
                         ForEach(reply.proposals) { proposal in proposalRow(proposal) }
                     } header: {
-                        Text("4. Keep the good ones" + (reply.ai.map { " — written by \($0)" } ?? ""))
+                        Text((pasted == nil ? "4. " : "") + "Keep the good ones" + (reply.ai.map { " — written by \($0)" } ?? ""))
                     } footer: {
                         Text("Your questions are kept apart from the signed set, and any report that includes them says so. Check each one yourself: the AI may be wrong.")
                             .font(.caption).foregroundStyle(.secondary)
@@ -117,6 +122,12 @@ struct NewQuestionsView: View {
             .padding(16)
         }
         .frame(width: 640, height: 720)
+        .onAppear {
+            if let pasted {
+                reply = pasted
+                keep = Set(pasted.proposals.filter(\.problems.isEmpty).map(\.id))
+            }
+        }
         .onChange(of: kind) { _, _ in clearReply() }
         .onChange(of: axis) { _, _ in clearReply() }
     }
@@ -169,6 +180,7 @@ struct NewQuestionsView: View {
         app.addOwn(items)
         added = items.count
         clearReply()
+        if pasted != nil { dismiss() }
     }
 
     private func clearReply() {

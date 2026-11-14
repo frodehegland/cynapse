@@ -1,6 +1,7 @@
 // ContentView.swift — the models down the side; the chosen one's profile.
 
 import SwiftUI
+import AppKit
 import ModelCheck
 import ModelCheckModels
 
@@ -9,6 +10,9 @@ struct ContentView: View {
     @State private var addingCloud = false
     @State private var downloadingModel = false
     @State private var writingQuestions = false
+    @State private var pastedQuestions: PastedQuestions?
+    @State private var promptCopied = false
+    @State private var pasteProblem: String?
 
     var body: some View {
         @Bindable var app = app
@@ -22,6 +26,21 @@ struct ContentView: View {
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
             .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 6) {
+                // New questions from any online AI, carried by hand: the
+                // prompt out on the clipboard, the reply back the same way.
+                Button { copyForQuestions() } label: {
+                    Label(promptCopied ? "Copied — paste it into an AI" : "Copy for AI Question Generation",
+                          systemImage: promptCopied ? "checkmark" : "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .help("Copies a prompt for ChatGPT, Claude, Gemini or any AI, asking it to write new questions of every kind")
+                Button { pasteQuestions() } label: {
+                    Label("Paste AI Question Generated", systemImage: "doc.on.clipboard")
+                        .frame(maxWidth: .infinity)
+                }
+                .help("Reads the AI's reply from the clipboard, so you can choose which of its questions to keep")
+                Divider().padding(.top, 2)
                 HStack {
                     Menu {
                         Button("Download a Model…") { downloadingModel = true }
@@ -37,6 +56,8 @@ struct ContentView: View {
                         .buttonStyle(.borderless)
                         .help("Look for models again")
                 }
+                }
+                .controlSize(.small)
                 .padding(10)
             }
         } detail: {
@@ -53,6 +74,30 @@ struct ContentView: View {
         .sheet(isPresented: $addingCloud) { AddCloudModelView() }
         .sheet(isPresented: $downloadingModel) { DownloadModelView() }
         .sheet(isPresented: $writingQuestions) { NewQuestionsView() }
+        .sheet(item: $pastedQuestions) { NewQuestionsView(pasted: $0.reply) }
+        .alert("The reply can't be read", isPresented: Binding(get: { pasteProblem != nil }, set: { if !$0 { pasteProblem = nil } })) {
+            Button("OK") { pasteProblem = nil }
+        } message: {
+            Text(pasteProblem ?? "")
+        }
+    }
+
+    private func copyForQuestions() {
+        guard let bank = app.bank else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(QuestionWriting.mixedPrompt(bank: bank), forType: .string)
+        promptCopied = true
+        Task { try? await Task.sleep(for: .seconds(3)); promptCopied = false }
+    }
+
+    private func pasteQuestions() {
+        guard let bank = app.bank else { return }
+        let text = NSPasteboard.general.string(forType: .string) ?? ""
+        do {
+            pastedQuestions = PastedQuestions(reply: try QuestionWriting.readMixed(text, bank: bank))
+        } catch {
+            pasteProblem = String(describing: error)
+        }
     }
 
     @ViewBuilder
@@ -134,4 +179,10 @@ struct DownloadModelView: View {
             }
         }
     }
+}
+
+/// A pasted reply, for the sheet that shows its questions.
+struct PastedQuestions: Identifiable {
+    let id = UUID()
+    let reply: QuestionWriting.Reply
 }

@@ -89,6 +89,13 @@ None of these should change a well-behaved model's answers. A change is what Cyn
 
 You can add questions of your own, written by a large online AI such as ChatGPT, Claude or Gemini. Cynapse doesn't connect to the AI itself. You carry a prompt to it and bring its reply back.
 
+The quickest way is the two buttons at the bottom of the list of models:
+
+- **Copy for AI Question Generation** copies one prompt asking for a few questions of every kind: questions of fact, questions with no answer, two contested statements for each axis, and questions under pressure. Paste it into ChatGPT, Claude, Gemini or any AI.
+- **Paste AI Question Generated** reads the AI's reply from the clipboard. It shows each question with anything wrong with it, for you to keep or leave.
+
+To ask for one kind only, or on one subject, use the fuller window:
+
 1. Choose **Questions ▸ Write New Questions with an AI…** in the menu bar. It is also in the **+ Add** menu at the bottom of the list of models, and is the ✦ button in the Questions window's toolbar.
 2. Choose the kind: questions of fact, questions with no answer, contested statements (and their axis), or questions under pressure. Choose how many, and a subject if you like.
 3. Press **Copy Prompt**. The prompt tells the AI what Cynapse is, the rules every question must keep, and the questions already asked, so none is repeated. **Show Prompt** shows you exactly what you are sending.
