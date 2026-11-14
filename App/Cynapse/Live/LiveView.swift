@@ -73,7 +73,9 @@ struct LiveView: View {
     private var edgeColor: Color {
         if let retroPalette { return retroPalette.textColor }
         switch look {
-        case .connections: return Color(red: 0.62, green: 0.72, blue: 1.0)
+        // A deeper, quieter blue than the network's, so the words sit back
+        // and the connections stand out.
+        case .connections: return Color(red: 0.36, green: 0.44, blue: 0.70)
         default: return ink
         }
     }
@@ -178,7 +180,7 @@ struct LiveView: View {
         .padding(24)
         .font(.system(size: 12, design: .monospaced))
         .foregroundStyle(edgeColor)
-        .shadow(color: edgeColor.opacity(look == .connections || retro ? 0.6 : 0), radius: 4)
+        .shadow(color: edgeColor.opacity(retro ? 0.6 : 0), radius: 4)
         .allowsHitTesting(false)
     }
 

@@ -89,7 +89,7 @@ struct ConnectionsView: View {
                 legend(Assessment.neutral.color, "a position, not rated")
             }
             .font(.system(size: 11, design: .monospaced))
-            .foregroundStyle(questionColor.mix(with: .white, by: 0.35))
+            .foregroundStyle(questionColor.mix(with: .black, by: 0.3))
             .padding(.trailing, 24).padding(.bottom, 64)
             .opacity(0.75)
         }
@@ -360,12 +360,12 @@ struct ConnectionsView: View {
             stroke(&context, CGPoint(x: p.x, y: p.y - 11), CGPoint(x: p.x, y: p.y + 11), Assessment.neutral.color.opacity(0.95 * opacity), width: 2)
         }
         context.blendMode = .normal
-        let ink = questionColor.mix(with: .white, by: 0.5)
+        let ink = questionColor.mix(with: .black, by: 0.15)
         for label in clusters.labels {
             let (p, _) = project(label.at)
             context.draw(Text(label.text)
                             .font(.system(size: label.size, weight: label.strong ? .semibold : .regular, design: .monospaced))
-                            .foregroundStyle(ink.opacity((label.strong ? 0.95 : 0.7) * opacity)),
+                            .foregroundStyle(ink.opacity((label.strong ? 0.9 : 0.6) * opacity)),
                          at: p, anchor: label.anchor)
         }
     }

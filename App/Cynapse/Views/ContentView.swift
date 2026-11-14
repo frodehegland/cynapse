@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(AppModel.self) private var app
     @State private var addingCloud = false
     @State private var downloadingModel = false
+    @State private var writingQuestions = false
 
     var body: some View {
         @Bindable var app = app
@@ -26,6 +27,8 @@ struct ContentView: View {
                         Button("Download a Model…") { downloadingModel = true }
                         Button("Add Model Folder…") { app.addFolder() }
                         Button("Add Cloud Model…") { addingCloud = true }
+                        Divider()
+                        Button("Write New Questions with an AI…") { writingQuestions = true }
                     } label: { Label("Add", systemImage: "plus") }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
@@ -49,6 +52,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $addingCloud) { AddCloudModelView() }
         .sheet(isPresented: $downloadingModel) { DownloadModelView() }
+        .sheet(isPresented: $writingQuestions) { NewQuestionsView() }
     }
 
     @ViewBuilder

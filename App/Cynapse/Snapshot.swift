@@ -140,7 +140,7 @@ struct LiveSnapshot: View {
                 }
             }
             .padding(24)
-            .foregroundStyle(look == .connections ? Color(red: 0.62, green: 0.72, blue: 1.0) : .white.opacity(0.75))
+            .foregroundStyle(look == .connections ? Color(red: 0.36, green: 0.44, blue: 0.70) : .white.opacity(0.75))
         }
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)
