@@ -432,7 +432,7 @@ if __name__ == "__main__":
 
     with open(os.path.join(HERE, "pilot-bank-v0.1-review.md"), "w") as f:
         design = open(os.path.join(HERE, "reasons-intro.md")).read()
-        design = "# How the bank is built\n\n" + design.replace("## Each question\n", "").strip()
+        design = "# How the questions were chosen\n\n" + design.replace("## Each question\n", "").strip()
         f.write(open(os.path.join(HERE, "review-intro.md")).read().replace("{SUMMARY}", summary).replace("{DESIGN}", design))
         f.write(write_questions(None, with_reasons=True))
         f.write("\n" + open(os.path.join(HERE, "review-outro.md")).read())
