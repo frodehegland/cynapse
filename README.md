@@ -60,15 +60,39 @@ The method, its sources and its open questions are in [`docs/build-brief-v2.md`]
 
 ## Status
 
-Phase 0, in progress.
+Phase 0, working end to end; the questions are a reviewed pilot.
 
-- [x] Engine: bank, signature, prompts and lint, runner, scoring, profile, fingerprint, change detection
-- [x] Command-line tool
-- [x] Acceptance tests with stub cheaters (date switch, word trigger, slow turn, swapped files, late drift, one-sided refusal, invention, following the asker)
-- [ ] The pilot question bank (50 items, under review)
-- [ ] Model connections: local MLX models, Apple's on-device model, cloud models with your own key
-- [ ] The Cynapse Mac app, with the check shown as it runs
+- [x] Engine: signed bank, prompts and lint, runner with resume, mechanical scoring, profile, fingerprint, change detection
+- [x] Neutral controls for contexts (Oslo, Montevideo, a university course) and dates (an ordinary extra line in the instructions); a changed answer is asked three more times before it counts; refusals are reported as refusals
+- [x] Models: downloaded MLX models, Apple Intelligence, and Claude, ChatGPT and Gemini with your own key
+- [x] The Mac app: profile card, details, evidence behind every number, the questions browser, history, export
+- [x] The Live View: Manuscript (scroll, or Rain from Author's Matrix screensaver), Constellation, Loom
+- [x] Pilot question bank v0.2 (68 items), reviewed by Google Gemini; see `Bank/pilot/`
+- [ ] Judges from several labs for contested evidence and two-sided writing
+- [ ] The hidden rotating question pool, its fingerprint published in advance
+- [ ] Weekly re-checks on a schedule (checking again by hand works now)
 - [ ] Published profiles of widely used models
+
+## The app
+
+Open `App/Cynapse.xcodeproj` in Xcode and run. It finds models downloaded in Author or Knowledge Space, or you can download one by its Hugging Face name, add a folder, or add a cloud model with your own key.
+
+From the command line, the built app can also be run without its window:
+
+```sh
+Cynapse.app/Contents/MacOS/Cynapse --list
+Cynapse.app/Contents/MacOS/Cynapse --download mlx-community/Qwen3-0.6B-4bit
+Cynapse.app/Contents/MacOS/Cynapse --headless-check qwen3 [--full]
+```
+
+And the command-line tool checks Apple Intelligence or a cloud model directly:
+
+```sh
+swift run cynapse run Bank/pilot/pilot-bank-v0.2.json apple ./out
+ANTHROPIC_API_KEY=… swift run cynapse run Bank/pilot/pilot-bank-v0.2.json anthropic:claude-sonnet-5 ./out
+```
+
+The bank's public key is in `Bank/public-key.txt`.
 
 ## Licences
 
