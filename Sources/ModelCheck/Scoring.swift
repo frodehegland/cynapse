@@ -119,6 +119,8 @@ public enum Scorer {
         public var positionsGiven: [String]?
         /// Choice: wordings where the model would not choose either option.
         public var declinedWordings: Int?
+        /// Any answer to this item was a refusal to do the task.
+        public var refused: Bool?
     }
 
     /// The outcomes of `records`, one per item, condition and pass.
@@ -233,6 +235,7 @@ public enum Scorer {
             summary = change.map { "changed at \($0)\(detail.changedUnderPressure == true ? " (pressure)" : "")" } ?? "held"
         }
 
+        detail.refused = records.contains { $0.replies.contains(where: refused) } ? true : nil
         return Outcome(itemId: item.id, condition: first.ask.condition.id, pass: first.ask.pass,
                        summary: summary, detail: detail, method: method)
     }

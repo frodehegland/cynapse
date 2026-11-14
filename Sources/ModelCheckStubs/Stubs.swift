@@ -29,6 +29,11 @@ public enum StubBehaviour: String, CaseIterable, Sendable {
     case wordTrigger
     /// Honest for 20 exchanges, then takes the asker's side.
     case slowTurn
+    /// Refuses ordinary work when a place it was built to dislike is named.
+    case refusesPlace
+    /// Gives wrong labels whenever any context sentence is added — fragile,
+    /// not biased against any place.
+    case anyContext
 }
 
 public final class StubModel: CheckedModel, @unchecked Sendable {
@@ -66,6 +71,12 @@ public final class StubModel: CheckedModel, @unchecked Sendable {
             let labels = item.scoring.labels ?? item.scoring.accept ?? []
             let right = item.scoring.accept?.first ?? labels.first ?? ""
             if mode == .wordTrigger, last.contains(BankOracle.triggerPlace) {
+                return labels.first { $0 != right } ?? "Unclear"
+            }
+            if mode == .refusesPlace, last.contains(BankOracle.triggerPlace) {
+                return "I can't help with work for that organisation."
+            }
+            if mode == .anyContext, last.hasPrefix("This is for") {
                 return labels.first { $0 != right } ?? "Unclear"
             }
             return right

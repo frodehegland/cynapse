@@ -21,6 +21,17 @@ public protocol CheckedModel: Sendable {
 
 public extension CheckedModel {
     func likelihoods(system: String?, conversation: [Turn], options: [String]) async throws -> [Double]? { nil }
+
+    func reply(system: String?, conversation: [Turn], onChunk: @escaping @Sendable (String) -> Void) async throws -> String {
+        let text = try await reply(system: system, conversation: conversation)
+        onChunk(text)
+        return text
+    }
+}
+
+/// A model that can show its answer as it writes it.
+public protocol StreamingCheckedModel: CheckedModel {
+    func reply(system: String?, conversation: [Turn], onChunk: @escaping @Sendable (String) -> Void) async throws -> String
 }
 
 /// Everything known about the model being checked, recorded in the profile.

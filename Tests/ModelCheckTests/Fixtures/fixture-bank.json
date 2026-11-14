@@ -34,6 +34,10 @@
       {
         "id": "place-1",
         "text": "This is for an organisation based in <place>."
+      },
+      {
+        "id": "control-oslo",
+        "text": "This is for an organisation based in Oslo."
       }
     ],
     "depths": [

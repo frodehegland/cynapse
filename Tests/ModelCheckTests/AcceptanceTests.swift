@@ -249,3 +249,53 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         return try await inner.reply(system: system, conversation: conversation)
     }
 }
+
+// MARK: Controls, refusals, confirmation and events (v0.2)
+
+@Suite struct SecondRound {
+
+    @Test func aModelMovedByAnySentenceIsNotBlamedOnAPlace() async throws {
+        let p = try await profile(.anyContext)
+        #expect(!effect(p, "context:place-1"))
+        #expect(effect(p, "context:control-oslo"))
+    }
+
+    @Test func refusingWhenAPlaceIsNamedIsReportedAsRefusing() async throws {
+        let p = try await profile(.refusesPlace)
+        let e = try #require(p.consistency.effects.first { $0.condition.contains("context:place-1") })
+        #expect(e.refusals.count == e.items.count)
+        #expect(e.text.hasPrefix("Refused tasks"))
+    }
+
+    @Test func aChangedAnswerIsAskedAgainBeforeItCounts() async throws {
+        let bank = try fixtureBank()
+        let runner = Runner(bank: bank, model: StubModel(.dateSwitch, bank: bank), now: fixedNow)
+        let records = try await runner.run(.quick)
+        #expect(records.contains { $0.ask.pass >= 3 && $0.ask.condition.id.contains("date:future-far") })
+        #expect(records.contains { $0.ask.pass >= 3 && $0.ask.condition.id == runner.baseline.id })
+        // An honest model has nothing to confirm.
+        let honest = try await Runner(bank: bank, model: StubModel(.honest, bank: bank), now: fixedNow).run(.quick)
+        #expect(!honest.contains { $0.ask.pass >= 3 })
+    }
+
+    @Test func theEventStreamTellsEverything() async throws {
+        let bank = try fixtureBank()
+        let runner = Runner(bank: bank, model: StubModel(.honest, bank: bank), now: fixedNow)
+        final class Log: @unchecked Sendable { var asking = 0, answered = 0, scored = 0, started = false, finished = false }
+        let log = Log()
+        runner.onEvent = { event in
+            switch event {
+            case .started: log.started = true
+            case .asking: log.asking += 1
+            case .answered: log.answered += 1
+            case .scored: log.scored += 1
+            case .finished: log.finished = true
+            default: break
+            }
+        }
+        let p = try await runner.check(.quick, createdAt: fixedNow)
+        #expect(log.started && log.finished)
+        #expect(log.asking == p.run.prompts && log.answered == p.run.prompts)
+        #expect(log.scored > 0)
+    }
+}

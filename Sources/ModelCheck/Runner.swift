@@ -37,6 +37,11 @@ public final class Runner {
     public let transcriptURL: URL?
     /// The real date the date conditions are counted from.
     public let now: Date
+    /// Told of everything as it happens — for the Live View.
+    public var onEvent: ((CheckEvent) -> Void)?
+    /// How many times a changed answer is asked again, under the baseline
+    /// and under the condition, before the difference is believed.
+    public var confirmations = 3
 
     public init(bank: Bank, model: any CheckedModel, style: PromptStyle = .standard,
                 transcriptURL: URL? = nil, now: Date = Date()) {
@@ -69,9 +74,12 @@ public final class Runner {
         case .full:
             return dates + contexts + depths
         case .quick:
-            // The furthest date ahead, and the first context.
+            // The furthest date ahead, the first opposed pair of contexts,
+            // and the first neutral control to measure them against.
             let far = dates.max { ($0.date.offsetDays ?? 0) < ($1.date.offsetDays ?? 0) }
-            return [far, contexts.first].compactMap { $0 }
+            let named = contexts.filter { !$0.context.id.hasPrefix("control-") }
+            let control = contexts.first { $0.context.id.hasPrefix("control-") }
+            return [far].compactMap { $0 } + Array(named.prefix(2)) + [control].compactMap { $0 }
         }
     }
 
@@ -101,27 +109,95 @@ public final class Runner {
 
     // MARK: Run
 
-    /// Runs the plan, skipping what the transcript already holds. `progress`
-    /// is told after each answer: done, total and the record.
+    /// Runs the plan, skipping what the transcript already holds; then asks
+    /// again any sentinel whose answer changed under a condition, to see
+    /// whether the difference holds. `progress` is told after each answer.
     public func run(_ mode: RunMode, progress: ((Int, Int, Record) -> Void)? = nil) async throws -> [Record] {
         // Whether the model can score options, found by asking once.
         let likelihoods = (try? await model.likelihoods(system: nil, conversation: [Turn(.user, "Is the sky blue?")],
                                                         options: ["Yes", "No"])) != nil
-        let asks = try plan(mode, likelihoods: likelihoods)
+        var asks = try plan(mode, likelihoods: likelihoods)
 
         let problems = PromptLint.problems(in: asks)
         if !problems.isEmpty { throw RunFailure.lint(problems) }
 
+        onEvent?(.started(model: model.identity, bank: bank.bank, planned: asks.count, mode: mode))
         var records = Self.readTranscript(transcriptURL)
+        try await ask(asks, into: &records, progress: progress)
+
+        // Confirmation: a changed answer is asked again before it counts.
+        let confirm = try confirmationAsks(records: records, likelihoods: likelihoods)
+        if !confirm.isEmpty {
+            asks += confirm
+            try await ask(confirm, into: &records, progress: progress)
+        }
+
+        let order = Dictionary(asks.enumerated().map { ($1.key, $0) }, uniquingKeysWith: { a, _ in a })
+        return records.filter { order[$0.ask.key] != nil }.sorted { order[$0.ask.key]! < order[$1.ask.key]! }
+    }
+
+    /// Runs and returns the profile, telling `onEvent` it is finished.
+    public func check(_ mode: RunMode, createdAt: Date = Date()) async throws -> Profile {
+        let records = try await run(mode)
+        let profile = ProfileBuilder.build(records: records, bank: bank, model: model.identity, mode: mode,
+                                           baseline: baseline, createdAt: createdAt)
+        onEvent?(.finished(profile))
+        return profile
+    }
+
+    func ask(_ asks: [Ask], into records: inout [Record], progress: ((Int, Int, Record) -> Void)?) async throws {
         let done = Set(records.map(\.ask.key))
-        for ask in asks where !done.contains(ask.key) {
+        // How many asks make up each item under each condition, so an item
+        // can be scored the moment its last part is answered.
+        let groupSizes = Dictionary(grouping: asks) { Self.group($0) }.mapValues(\.count)
+        var answered = Dictionary(grouping: records) { Self.group($0.ask) }
+        let total = asks.count
+        for (index, ask) in asks.enumerated() where !done.contains(ask.key) {
+            try Task.checkCancellation()
+            onEvent?(.asking(ask, index: index + 1, of: total))
             let record = try await answer(ask)
             records.append(record)
             try append(record)
-            progress?(records.count, asks.count, record)
+            onEvent?(.answered(record, index: index + 1, of: total))
+            progress?(index + 1, total, record)
+
+            let group = Self.group(ask)
+            answered[group, default: []].append(record)
+            if answered[group]?.count == groupSizes[group], let item = bank.item(ask.itemId),
+               let outcome = Scorer.outcome(item, answered[group]!.sorted { $0.ask.part < $1.ask.part }, bank: bank) {
+                onEvent?(.scored(outcome, plain: outcome.plainText(item: item)))
+            }
         }
-        let order = Dictionary(asks.enumerated().map { ($1.key, $0) }, uniquingKeysWith: { a, _ in a })
-        return records.filter { order[$0.ask.key] != nil }.sorted { order[$0.ask.key]! < order[$1.ask.key]! }
+    }
+
+    static func group(_ ask: Ask) -> String { "\(ask.itemId)|\(ask.condition.id)|\(ask.pass)" }
+
+    /// For each sentinel whose answer under a condition differs from the
+    /// baseline's, the same asks again — `confirmations` times under each.
+    func confirmationAsks(records: [Record], likelihoods: Bool) throws -> [Ask] {
+        guard confirmations > 0 else { return [] }
+        let outcomes = Scorer.outcomes(records, bank: bank)
+        let base = baseline
+        let baseSummaries = Dictionary(outcomes.filter { $0.condition == base.id && $0.pass == 2 }.map { ($0.itemId, $0.summary) },
+                                       uniquingKeysWith: { a, _ in a })
+        var asks: [Ask] = []
+        for outcome in outcomes where outcome.pass == 1 && outcome.condition != base.id && bank.sentinels.contains(outcome.itemId) {
+            guard let before = baseSummaries[outcome.itemId], before != outcome.summary,
+                  let item = bank.item(outcome.itemId),
+                  let condition = records.first(where: { $0.ask.itemId == outcome.itemId && $0.ask.condition.id == outcome.condition })?.ask.condition
+            else { continue }
+            onEvent?(.confirming(itemId: outcome.itemId, condition: outcome.condition))
+            for pass in 3..<(3 + confirmations) {
+                for c in [base, condition] {
+                    asks += try AskBuilder.asks(for: item, in: bank, condition: c, style: style,
+                                                allWordings: false, likelihoods: likelihoods, now: now)
+                        .map { var a = $0; a.pass = pass; return a }
+                }
+            }
+        }
+        // The baseline re-asks are shared by every condition of the same item.
+        var seen = Set<String>()
+        return asks.filter { seen.insert($0.key).inserted }
     }
 
     func answer(_ ask: Ask) async throws -> Record {
@@ -133,9 +209,18 @@ public final class Runner {
         }
         var conversation = ask.conversation
         var replies: [String] = []
+        let key = ask.key
+        let onEvent = self.onEvent
         for followUp in [nil] + (ask.followUps ?? []).map(Optional.some) {
             if let followUp { conversation.append(Turn(.user, followUp)) }
-            let reply = try await model.reply(system: ask.system, conversation: conversation)
+            let reply: String
+            if let streaming = model as? any StreamingCheckedModel {
+                reply = try await streaming.reply(system: ask.system, conversation: conversation) { chunk in
+                    onEvent?(.answerChunk(key: key, text: chunk))
+                }
+            } else {
+                reply = try await model.reply(system: ask.system, conversation: conversation)
+            }
             replies.append(reply)
             conversation.append(Turn(.assistant, reply))
         }
