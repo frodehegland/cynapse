@@ -7,17 +7,22 @@ import ModelCheck
 
 struct EvidenceView: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
     let evidence: Evidence
+    /// Closes the panel.
+    var close: () -> Void
 
     var body: some View {
         let records = ProfileStore.records(of: evidence.stored).filter { evidence.ids.contains($0.ask.itemId) }
         let byItem = Dictionary(grouping: records, by: \.ask.itemId)
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(evidence.title).font(.title2.weight(.semibold))
+                Text(evidence.title).font(.title3.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+                Button { close() } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.borderless)
+                    .keyboardShortcut(.cancelAction)
+                    .help("Close")
             }
             .padding(20)
             Divider()
@@ -35,7 +40,7 @@ struct EvidenceView: View {
                 }
             }
         }
-        .frame(minWidth: 760, minHeight: 560)
+        .frame(minWidth: 380)
     }
 
     @ViewBuilder
@@ -46,8 +51,17 @@ struct EvidenceView: View {
         }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
+                if let outcome {
+                    let rating = outcome.assessment(item: item)
+                    Circle().fill(rating == .neutral ? Color.clear : rating.color)
+                        .overlay(Circle().stroke(rating == .neutral ? Color.secondary.opacity(0.5) : .clear))
+                        .frame(width: 8, height: 8)
+                }
                 Text(id).font(.caption.monospaced()).foregroundStyle(.secondary)
-                if let outcome { Text(outcome.plainText(item: item)).font(.callout) }
+                if let outcome {
+                    Text(outcome.plainText(item: item)).font(.callout)
+                        .foregroundStyle(outcome.assessment(item: item) == .wrong ? Assessment.wrong.color : Color.primary)
+                }
             }
             let bySituation = Dictionary(grouping: records) { "\($0.ask.condition.id)|\($0.ask.pass)" }
             ForEach(bySituation.keys.sorted(), id: \.self) { key in
@@ -56,7 +70,7 @@ struct EvidenceView: View {
                     let situation = LiveState.situation(group[0].ask.condition)
                     Text((situation.isEmpty ? "As asked plainly" : situation) + (group[0].ask.pass == 2 ? " (asked again unchanged)" : group[0].ask.pass >= 3 ? " (asked again to confirm)" : ""))
                         .font(.caption).foregroundStyle(.secondary)
-                    HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         ForEach(group, id: \.ask.key) { record in
                             exchange(record).frame(maxWidth: .infinity, alignment: .topLeading)
                         }

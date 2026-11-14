@@ -33,7 +33,7 @@ enum Snapshot {
                 while app.runningEntry != nil { try? await Task.sleep(for: .milliseconds(300)) }
             }
             if app.live.exchanges.isEmpty { app.replayLatest() }
-            render(LiveSnapshot(look: .synapses).environment(app), "live-synapses", folder)
+            render(LiveSnapshot(look: .connections).environment(app), "live-connections", folder)
             render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-done", folder)
             render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked") { _, _ in }
                     .padding(20).frame(width: 760).environment(app), "card", folder, size: CGSize(width: 760, height: 900))
@@ -60,7 +60,7 @@ struct LiveSnapshot: View {
         ZStack {
             Color.black
             switch look {
-            case .synapses: SynapseView(live: app.live, bank: app.bank)
+            case .connections: ConnectionsView(live: app.live, bank: app.bank)
             case .manuscript: ManuscriptView(live: app.live, ink: .white, privacy: false) { _ in }
             case .constellation: ConstellationView(live: app.live, bank: app.bank, ink: .white)
             case .loom: LoomView(live: app.live, ink: .white)
@@ -83,7 +83,7 @@ struct LiveSnapshot: View {
                 }
             }
             .padding(24)
-            .foregroundStyle(look == .synapses ? Color(red: 0.62, green: 0.72, blue: 1.0) : .white.opacity(0.75))
+            .foregroundStyle(look == .connections ? Color(red: 0.62, green: 0.72, blue: 1.0) : .white.opacity(0.75))
         }
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)

@@ -1,24 +1,27 @@
-// SynapseView.swift — the check as a living network of synapses.
+// ConnectionsView.swift — the check as a living network of connections.
 //
 // Every question in the bank is a node: dim until it is asked, then lit in
-// blue. Every answer the model gives is an orange node beside its question,
-// joined to it by a thread of light. When the same question is asked again
-// in another situation, its answers are joined to one another, so repeated
-// questions grow into small webs; questions of the same kind are threaded
-// together. The whole network turns slowly in depth. Blue and orange only
-// tell the questions from the model's answers — they never mean good or bad.
-// In Retro, the palette's line and text colours take their places.
+// blue. Every answer the model gives is a node beside its question, joined
+// to it by a thread of light, coloured by how that result rates: green
+// good, yellow acceptable, orange questionable, red wrong or a serious
+// warning. A position on a contested question is never rated and glows a
+// soft neutral white. When the same question is asked again in another
+// situation, its answers are joined to one another, so repeated questions
+// grow into small webs; neighbouring questions are threaded together. The
+// whole network turns slowly in depth. In Retro, the questions take the
+// palette's colour; the ratings keep theirs, since they carry meaning.
 
 import SwiftUI
 import ModelCheck
 
-struct SynapseView: View {
+struct ConnectionsView: View {
     let live: LiveState
     let bank: Bank?
     var palette: RetroPalette? = nil
 
     private var questionColor: Color { palette?.lineColor ?? Color(red: 0.36, green: 0.52, blue: 1.0) }
-    private var answerColor: Color { palette?.textColor ?? Color(red: 1.0, green: 0.55, blue: 0.22) }
+    /// An answer not yet rated (its other parts still being asked).
+    private var pendingColor: Color { Color(white: 0.75) }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
@@ -28,8 +31,12 @@ struct SynapseView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             HStack(spacing: 14) {
-                legend(questionColor, "the questions")
-                legend(answerColor, "the model's answers")
+                legend(questionColor, "questions")
+                legend(Assessment.good.color, "good")
+                legend(Assessment.ok.color, "acceptable")
+                legend(Assessment.questionable.color, "questionable")
+                legend(Assessment.wrong.color, "wrong")
+                legend(Assessment.neutral.color, "a position, not rated")
             }
             .font(.system(size: 11, design: .monospaced))
             .foregroundStyle(questionColor.mix(with: .white, by: 0.35))
@@ -113,6 +120,7 @@ struct SynapseView: View {
         let itemPoints = Dictionary(uniqueKeysWithValues: items.map { ($0.id, position(of: $0)) })
         let asked = live.askedItems.union(live.current.map { [$0.itemId] } ?? [])
         let newest = live.exchanges.suffix(6).map(\.key)
+        let ratings = live.assessments(bank: bank)
 
         context.blendMode = .plusLighter
 
@@ -136,6 +144,7 @@ struct SynapseView: View {
             let (qp, qd) = project(q)
             let (ap, ad) = project(answerPosition(exchange, near: q))
             let fresh = newest.contains(exchange.key)
+            let answerColor = ratings[exchange.outcomeKey]?.color ?? pendingColor
             let depth = 0.3 + 0.7 * (qd + ad) / 2
             // Blue at the question, orange at the answer.
             gradientStroke(&context, qp, ap, from: questionColor.opacity((fresh ? 0.8 : 0.3) * depth),
@@ -154,7 +163,7 @@ struct SynapseView: View {
             let (ap, _) = project(answerPosition(current, near: q))
             let grown = min(1, Double(current.answer.count) / 160)
             let tip = CGPoint(x: qp.x + (ap.x - qp.x) * grown, y: qp.y + (ap.y - qp.y) * grown)
-            stroke(&context, qp, tip, answerColor.opacity(0.9), width: 1.6)
+            stroke(&context, qp, tip, pendingColor.opacity(0.9), width: 1.6)
             let pulse = 0.5 + 0.5 * sin(t * 5)
             glow(&context, qp, depth: qd, color: questionColor, radius: 4 + 3 * pulse, bright: 1)
         }

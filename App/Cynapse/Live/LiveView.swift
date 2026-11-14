@@ -9,11 +9,11 @@ import SwiftUI
 import ModelCheck
 
 enum LiveLook: String, CaseIterable, Identifiable {
-    case synapses, manuscript, constellation, loom
+    case connections, manuscript, constellation, loom
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .synapses: "Synapses"
+        case .connections: "Connections"
         case .manuscript: "Manuscript"
         case .constellation: "Constellation"
         case .loom: "Loom"
@@ -46,7 +46,7 @@ struct LiveView: View {
     @AppStorage(LiveSettings.retroPalette) private var retroPaletteName = "random"
     @AppStorage(LiveSettings.fullScreen) private var openFullScreen = true
 
-    @State private var look: LiveLook = .synapses
+    @State private var look: LiveLook = .connections
     @State private var palette = RetroPalette.all.randomElement()!
     @State private var toggleFullScreen = false
     @State private var controlsShown = true
@@ -55,13 +55,14 @@ struct LiveView: View {
     @State private var lastCycle = Date()
     @State private var lastModule: Item.Module?
     @State private var cardHidden = false
+    @State private var evidence: Evidence?
 
     private var live: LiveState { app.live }
     /// The Retro palette in use, or nil when Retro is off.
     private var retroPalette: RetroPalette? { retro ? palette : nil }
     private var dark: Bool {
         // Glowing looks need the dark: on a light page their light vanishes.
-        if retro || look == .synapses || (look == .manuscript && manuscriptStyle == "rain") { return true }
+        if retro || look == .connections || (look == .manuscript && manuscriptStyle == "rain") { return true }
         switch theme {
         case "paper": return false
         case "obsidian": return true
@@ -74,7 +75,7 @@ struct LiveView: View {
     private var edgeColor: Color {
         if let retroPalette { return retroPalette.textColor }
         switch look {
-        case .synapses: return Color(red: 0.62, green: 0.72, blue: 1.0)
+        case .connections: return Color(red: 0.62, green: 0.72, blue: 1.0)
         case .manuscript where manuscriptStyle == "rain": return Color(red: 0.35, green: 1.0, blue: 0.45)
         default: return ink
         }
@@ -86,8 +87,8 @@ struct LiveView: View {
             paper.ignoresSafeArea()
             Group {
                 switch look {
-                case .synapses:
-                    SynapseView(live: live, bank: app.bank, palette: retroPalette)
+                case .connections:
+                    ConnectionsView(live: live, bank: app.bank, palette: retroPalette)
                 case .manuscript:
                     if manuscriptStyle == "rain" {
                         RainView(live: live, privacy: privacy, palette: retroPalette)
@@ -108,11 +109,18 @@ struct LiveView: View {
             if density != "ambient" { hud.retroGlow(retroPalette) }
             if controlsShown { controls }
             if let profile = live.profile, !live.running, !cardHidden {
-                ProfileCardView(profile: profile, status: "checked") { _, _ in }
+                ProfileCardView(profile: profile, status: "checked") { ids, title in
+                    // The stored check this profile came from, for its transcript.
+                    if !ids.isEmpty, let stored = app.profiles.values.flatMap({ $0 }).first(where: { $0.profile.createdAt == profile.createdAt }) {
+                        evidence = Evidence(title: title, ids: ids, stored: stored)
+                    }
+                }
                     .frame(maxWidth: 640)
                     .padding(30)
-                    .onTapGesture { withAnimation { cardHidden = true } }
-                    .help("Click to see the network behind")
+                    .overlay(alignment: .topTrailing) {
+                        Button { withAnimation { cardHidden = true } } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.borderless).padding(10).help("Hide, to see the network behind")
+                    }
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
@@ -131,7 +139,7 @@ struct LiveView: View {
         }
         .onKeyPress { _ in showControls(); return .ignored }
         .onAppear {
-            look = style == "random" ? .synapses : (LiveLook(rawValue: style) ?? .synapses)
+            look = style == "random" ? .connections : (LiveLook(rawValue: style) ?? .connections)
             palette = RetroPalette.named(retroPaletteName)
             if !live.running && live.exchanges.isEmpty { app.replayLatest() }
         }
@@ -140,6 +148,13 @@ struct LiveView: View {
         .onChange(of: style) { _, new in if let l = LiveLook(rawValue: new) { look = l } }
         .task { await autoCycle() }
         .sheet(item: $inspected) { ExchangeDrawer(exchange: $0) }
+        .inspector(isPresented: Binding(get: { evidence != nil }, set: { if !$0 { evidence = nil } })) {
+            if let evidence {
+                EvidenceView(evidence: evidence) { self.evidence = nil }
+                    .environment(\.colorScheme, .dark)
+                    .inspectorColumnWidth(min: 360, ideal: 460, max: 700)
+            }
+        }
         .frame(minWidth: 900, minHeight: 600)
     }
 
@@ -161,7 +176,7 @@ struct LiveView: View {
         .padding(24)
         .font(.system(size: 12, design: .monospaced))
         .foregroundStyle(edgeColor)
-        .shadow(color: edgeColor.opacity(look == .synapses || retro ? 0.6 : 0), radius: 4)
+        .shadow(color: edgeColor.opacity(look == .connections || retro ? 0.6 : 0), radius: 4)
         .allowsHitTesting(false)
     }
 

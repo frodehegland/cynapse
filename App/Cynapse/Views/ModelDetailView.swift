@@ -39,7 +39,13 @@ struct ModelDetailView: View {
             .frame(maxWidth: 820, alignment: .leading)
         }
         .onChange(of: entry) { _, _ in shown = nil }
-        .sheet(item: $evidence) { EvidenceView(evidence: $0) }
+        // The questions behind a line, in a panel beside the profile.
+        .inspector(isPresented: Binding(get: { evidence != nil }, set: { if !$0 { evidence = nil } })) {
+            if let evidence {
+                EvidenceView(evidence: evidence) { self.evidence = nil }
+                    .inspectorColumnWidth(min: 360, ideal: 460, max: 700)
+            }
+        }
         .navigationTitle(entry.name)
     }
 

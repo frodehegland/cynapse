@@ -39,7 +39,11 @@ func printJSON<T: Encodable>(_ value: T) {
 
 func summary(_ profile: Profile) {
     print(profile.model.name)
-    for line in profile.reportLines() { print("  \(line.heading.padding(toLength: 11, withPad: " ", startingAt: 0)) \(line.text)") }
+    let marks: [Assessment: String] = [.good: "✓", .ok: "·", .questionable: "?", .wrong: "!", .neutral: " "]
+    for line in profile.reportLines() {
+        print("  \(marks[line.assessment] ?? " ") \(line.heading.padding(toLength: 11, withPad: " ", startingAt: 0)) \(line.text)")
+    }
+    print("    (✓ good  · acceptable  ? questionable  ! wrong or serious; positions on contested questions are never rated)")
     print("  Limits")
     for limit in profile.limits { print("    \(limit)") }
 }

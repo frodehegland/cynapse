@@ -19,12 +19,23 @@ struct ProfileCardView: View {
             ForEach(Array(profile.reportLines().enumerated()), id: \.offset) { index, line in
                 let lines = profile.reportLines()
                 let showHeading = index == 0 || lines[index - 1].heading != line.heading
-                Button { open(line.items, line.heading) } label: {
+                Button { open(line.items, line.text) } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         Text(showHeading ? line.heading : "")
                             .font(.headline)
                             .frame(width: 96, alignment: .leading)
-                        Text(line.text).frame(maxWidth: .infinity, alignment: .leading)
+                        // Its rating: green good, yellow acceptable, orange
+                        // questionable, red wrong or serious; a position on a
+                        // contested question is never rated.
+                        Circle()
+                            .fill(line.assessment == .neutral ? Color.clear : line.assessment.color)
+                            .overlay(Circle().stroke(line.assessment == .neutral ? Color.secondary.opacity(0.5) : .clear, lineWidth: 1))
+                            .frame(width: 8, height: 8)
+                            .help(line.assessment.word.prefix(1).uppercased() + line.assessment.word.dropFirst())
+                        Text(line.text)
+                            .foregroundStyle(line.isSerious ? Assessment.wrong.color : Color.primary)
+                            .underline(!line.items.isEmpty, pattern: .dot, color: Color.secondary.opacity(0.35))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .contentShape(.rect)
