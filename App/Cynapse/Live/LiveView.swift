@@ -222,6 +222,12 @@ struct LiveView: View {
             Spacer()
             HStack {
                 Spacer()
+                // Check the model shown here again, from the start.
+                Button("Rescan") { rescan() }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .disabled(app.runningEntry != nil || rescanEntry == nil)
+                    .help(rescanEntry.map { "Check \($0.name) again" } ?? "Choose a model to check")
                 Picker("", selection: $look) {
                     ForEach(LiveLook.allCases) { Text($0.title).tag($0) }
                 }
@@ -241,6 +247,27 @@ struct LiveView: View {
     }
 
     // MARK: Behaviour
+
+    /// The model this view is showing: the one being checked, else the one
+    /// whose last check is shown, else the one chosen in the main window.
+    private var rescanEntry: ModelEntry? {
+        if let running = app.runningEntry { return app.entries.first { $0.id == running } }
+        if let shown = live.profile,
+           let entry = app.entries.first(where: { app.profiles[$0.id]?.contains { $0.profile.createdAt == shown.createdAt } == true }) {
+            return entry
+        }
+        return app.selected
+    }
+
+    /// The same kind of check again (a weekly re-check is rescanned as a
+    /// quick check), shown here as it runs.
+    private func rescan() {
+        guard let entry = rescanEntry else { return }
+        let mode: RunMode = live.profile?.run.kind == .full ? .full : .quick
+        cardHidden = false
+        evidence = nil
+        app.startCheck(entry, mode: mode)
+    }
 
     private func showControls() {
         lastMove = Date()
