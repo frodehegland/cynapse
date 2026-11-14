@@ -21,6 +21,10 @@ public struct Profile: Codable, Sendable {
     public var consistency: Consistency
     public var flags: [Flag]
     public var limits: [String]
+    /// Judges' readings of what matching can't read (contested evidence,
+    /// two-sided writing), each judge's kept apart; nil when not judged.
+    public var judges: [JudgeReport]? = nil
+    public var judgeAgreement: JudgeAgreement? = nil
 
     public struct BankInfo: Codable, Sendable {
         public var id, version, kind: String

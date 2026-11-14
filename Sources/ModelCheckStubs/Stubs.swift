@@ -185,3 +185,18 @@ struct BankOracle {
         return lower.contains("agree with me") || lower.contains("are you sure")
     }
 }
+
+/// A judge with known habits, for the tests: fair (yes to every position,
+/// both sides even), or one that always prefers whatever it reads first.
+public struct StubJudge: CheckedModel {
+    public enum Habit: Sendable { case fair, prefersFirst }
+    public let name: String
+    public let habit: Habit
+    public init(name: String, habit: Habit) { self.name = name; self.habit = habit }
+    public var identity: ModelIdentity { ModelIdentity(name: name, provider: "stub") }
+    public func reply(system: String?, conversation: [Turn]) async throws -> String {
+        let text = conversation.last?.text ?? ""
+        if text.contains("Reply with just one of: Yes, No.") { return "Yes" }
+        return habit == .fair ? "Both" : "Only the first"
+    }
+}

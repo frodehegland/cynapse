@@ -23,6 +23,14 @@ final class AppModel {
     var fingerprints: [ModelEntry.ID: (hash: String, size: Int64)] = [:]
     var fingerprinting: Set<ModelEntry.ID> = []
 
+    /// The models chosen to judge what matching can't read (Settings ▸
+    /// Judges): two or three from different labs.
+    var judgeIDs: [String] {
+        get { UserDefaults.standard.stringArray(forKey: "JudgeModels") ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: "JudgeModels") }
+    }
+    var judging: String?
+
     var runningEntry: ModelEntry.ID?
     var runProblem: String?
     let live = LiveState()
@@ -172,6 +180,7 @@ final class AppModel {
                         WeeklyChecks.finished(stored, entry: entry, profiles: self.profiles[entry.id] ?? [], bank: bank)
                     }
                     self.runningEntry = nil
+                    if mode != .weekly, let stored { self.judge(stored, entry: entry) }
                 }
             } catch is CancellationError {
                 continuation.finish()
@@ -183,6 +192,31 @@ final class AppModel {
                     self.runningEntry = nil
                     self.live.running = false
                 }
+            }
+        }
+    }
+
+    /// The chosen judges read the answers a check can't score mechanically;
+    /// their reports are added to the profile.
+    func judge(_ stored: StoredProfile, entry: ModelEntry) {
+        guard let bank else { return }
+        let judges = judgeIDs.compactMap { id in entries.first { $0.id == id && $0.id != entry.id } }
+            .compactMap { try? ModelLibrary.model(for: $0, fingerprint: fingerprints[$0.id]) }
+        guard !judges.isEmpty else { return }
+        judging = "Judges are reading the answers…"
+        let records = ProfileStore.records(of: stored)
+        Task.detached(priority: .utility) {
+            let reports = try? await Judging.judge(records: records, bank: bank, tested: stored.profile.model, judges: judges) { message in
+                Task { @MainActor in self.judging = message }
+            }
+            await MainActor.run {
+                self.judging = nil
+                guard let reports, !reports.isEmpty else { return }
+                var profile = stored.profile
+                profile.judges = reports
+                profile.judgeAgreement = Judging.agreement(reports)
+                try? profile.jsonData().write(to: stored.url)
+                self.profiles[entry.id] = ProfileStore.profiles(for: entry)
             }
         }
     }

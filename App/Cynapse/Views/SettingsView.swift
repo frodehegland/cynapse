@@ -8,6 +8,7 @@ struct SettingsView: View {
         TabView {
             LiveSettingsView().tabItem { Label("Live View", systemImage: "sparkles.tv") }
             ChecksSettingsView().tabItem { Label("Re-checks", systemImage: "calendar") }
+            JudgesSettingsView().tabItem { Label("Judges", systemImage: "person.3") }
             KeysView().tabItem { Label("Cloud Keys", systemImage: "key") }
         }
         .frame(width: 500)
@@ -104,5 +105,34 @@ struct ChecksSettingsView: View {
                 .onChange(of: atLogin) { _, new in WeeklyChecks.opensAtLogin = new }
         }
         .formStyle(.grouped)
+    }
+}
+
+struct JudgesSettingsView: View {
+    @Environment(AppModel.self) private var app
+    @State private var chosen: Set<String> = []
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(app.entries) { entry in
+                    Toggle(isOn: Binding(get: { chosen.contains(entry.id) }, set: { on in
+                        if on { chosen.insert(entry.id) } else { chosen.remove(entry.id) }
+                        app.judgeIDs = Array(chosen)
+                    })) {
+                        VStack(alignment: .leading) {
+                            Text(entry.name)
+                            Text(entry.kindLabel + " · " + app.status(of: entry)).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(!chosen.contains(entry.id) && chosen.count >= 3)
+                }
+            } footer: {
+                Text("Judges read what matching can't: whether an answer presents a position fairly or only mentions it to dismiss it, and whether both sides of a question were argued as strongly. Choose two or three from different labs. No judge is neutral, so each judge's verdicts are shown separately, with how often they agreed; a model never judges itself. A judge should itself have been checked.")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { chosen = Set(app.judgeIDs) }
     }
 }

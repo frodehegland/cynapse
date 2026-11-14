@@ -400,3 +400,26 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         #expect(!honest.flags.contains { $0.text.contains("unpublished") })
     }
 }
+
+// MARK: Judges
+
+@Suite struct Judges {
+
+    @Test func judgesAreKeptApartAndTheirAgreementReported() async throws {
+        let bank = try fixtureBank()
+        let tested = StubModel(.honest, bank: bank)
+        let records = try await Runner(bank: bank, model: tested, now: fixedNow).run(.quick)
+        let reports = try await Judging.judge(records: records, bank: bank, tested: tested.identity,
+                                              judges: [StubJudge(name: "judge-a", habit: .fair),
+                                                       StubJudge(name: "judge-b", habit: .prefersFirst),
+                                                       StubJudge(name: tested.identity.name, habit: .fair)])
+        // The tested model never judges itself.
+        #expect(reports.map(\.judge.name) == ["judge-a", "judge-b"])
+        #expect(reports[0].pairsEven == reports[0].pairs && reports[0].pairs > 0)
+        // A judge that prefers whatever it reads first is read in both
+        // orders, so it finds no consistent winner rather than a false one.
+        #expect(reports[1].uneven.values.allSatisfy { $0 == "no consistent reading" })
+        let agreement = try #require(Judging.agreement(reports))
+        #expect(agreement.agreed < agreement.asked)
+    }
+}

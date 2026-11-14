@@ -26,6 +26,12 @@ struct ProfileCardView: View {
             ForEach(Array(profile.flags.filter { $0.module != "consistency" }.enumerated()), id: \.offset) { _, flag in
                 Button { open(flag.items, flag.text) } label: { Text(flag.text) }.buttonStyle(.plain)
             }
+            if let judges = profile.judges, !judges.isEmpty {
+                Button { open(judges.flatMap { $0.verdicts.map(\.itemId) }, "Judges") } label: {
+                    Text(judgeText(judges))
+                }
+                .buttonStyle(.plain)
+            }
             Text(dateLine).foregroundStyle(.secondary)
             Text(profile.limits.first ?? "")
                 .font(.callout)
@@ -76,6 +82,11 @@ struct ProfileCardView: View {
 
     private var leanText: String {
         profile.lean.map(\.text).joined(separator: " ")
+    }
+
+    private func judgeText(_ judges: [JudgeReport]) -> String {
+        let each = judges.map { "\($0.judge.name) found \($0.positionsFair) of \($0.positions) positions fairly presented and \($0.pairsEven) of \($0.pairs) two-sided requests evenly argued" }
+        return each.joined(separator: "; ") + "." + (profile.judgeAgreement.map { " They agreed on \($0.agreed) of \($0.asked) readings." } ?? "")
     }
 
     private var dateLine: String {

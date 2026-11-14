@@ -11,6 +11,7 @@
 //   cynapse pool-commit <pool.json>             fingerprint a new hidden pool; publish it in Bank/pools.json
 //   cynapse pool-verify <pool.json>             does a released pool match its published fingerprint?
 //   cynapse run <bank.json> <model> <out-dir> [--full] [--pool <pool.json> --pool-draw <n>]
+//                                               [--judges apple,openai:gpt-5,…]
 //                                               check a real model: "apple", or
 //                                               anthropic|openai|gemini:<model-name>
 //                                               with the key in ANTHROPIC_API_KEY etc.
@@ -61,6 +62,27 @@ func option(_ name: String) -> String? {
     return value
 }
 let poolPath = option("--pool")
+let judgeSpecs = option("--judges")?.split(separator: ",").map(String.init) ?? []
+
+/// "apple", or provider:model with the key in the environment.
+func makeModel(from spec: String) -> any CheckedModel {
+    if spec == "apple" {
+        #if canImport(FoundationModels)
+        guard #available(macOS 26.0, *) else { fail("Apple's on-device model needs macOS 26 or later.") }
+        let availability = AppleModel.availability
+        guard availability.available else { fail(availability.reason ?? "Apple Intelligence isn't available.") }
+        return AppleModel()
+        #else
+        fail("This build has no FoundationModels.")
+        #endif
+    }
+    let parts = spec.split(separator: ":", maxSplits: 1).map(String.init)
+    guard parts.count == 2, let provider = CloudModel.Provider(rawValue: parts[0]) else { fail("Unknown model \(spec).") }
+    guard let key = ProcessInfo.processInfo.environment[provider.environmentKey], !key.isEmpty else {
+        fail("Set \(provider.environmentKey) to your own key.")
+    }
+    return CloudModel(provider: provider, model: parts[1], key: key)
+}
 let poolDraw = Int(option("--pool-draw") ?? "") ?? 10
 
 /// The published fingerprints of hidden pools.
@@ -189,25 +211,7 @@ case "run":
             print("Drawing \(bank.pool?.drawn.count ?? 0) unpublished questions from pool \(pool.pool.id).")
         } catch { fail("Couldn't read the pool: \(error)") }
     }
-    let spec = args[2]
-    let model: any CheckedModel
-    if spec == "apple" {
-        #if canImport(FoundationModels)
-        guard #available(macOS 26.0, *) else { fail("Apple's on-device model needs macOS 26 or later.") }
-        let availability = AppleModel.availability
-        guard availability.available else { fail(availability.reason ?? "Apple Intelligence isn't available.") }
-        model = AppleModel()
-        #else
-        fail("This build has no FoundationModels.")
-        #endif
-    } else {
-        let parts = spec.split(separator: ":", maxSplits: 1).map(String.init)
-        guard parts.count == 2, let provider = CloudModel.Provider(rawValue: parts[0]) else { fail("Unknown model \(spec).") }
-        guard let key = ProcessInfo.processInfo.environment[provider.environmentKey], !key.isEmpty else {
-            fail("Set \(provider.environmentKey) to your own key.")
-        }
-        model = CloudModel(provider: provider, model: parts[1], key: key)
-    }
+    let model = makeModel(from: args[2])
     let out = URL(fileURLWithPath: args[3], isDirectory: true)
     try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
     let safe = model.identity.name.map { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "." ? $0 : "_" }
@@ -228,7 +232,17 @@ case "run":
     let semaphore = DispatchSemaphore(value: 0)
     Task {
         do {
-            let profile = try await runner.check(mode)
+            var profile = try await runner.check(mode)
+            if !judgeSpecs.isEmpty {
+                let records = Runner.readTranscript(base.appendingPathExtension("modelcheck.transcript.jsonl"))
+                profile.judges = try await Judging.judge(records: records, bank: bank, tested: model.identity,
+                                                         judges: judgeSpecs.map { makeModel(from: $0) }) { print($0) }
+                profile.judgeAgreement = Judging.agreement(profile.judges ?? [])
+                for report in profile.judges ?? [] {
+                    print("Judge \(report.judge.name): \(report.positionsFair) of \(report.positions) positions fair; \(report.pairsEven) of \(report.pairs) two-sided requests even.")
+                }
+                if let agreement = profile.judgeAgreement { print(agreement.text) }
+            }
             try profile.jsonData().write(to: base.appendingPathExtension("modelcheck.json"))
             print("")
             summary(profile)

@@ -32,6 +32,22 @@ struct ProfileDetailView: View {
                     .buttonStyle(.plain)
                 }
             }
+            if let judges = profile.judges, !judges.isEmpty {
+                section("Judges") {
+                    if let agreement = profile.judgeAgreement { Text(agreement.text) }
+                    ForEach(judges, id: \.judge.name) { report in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(report.judge.name).font(.headline)
+                            Text("Positions fairly presented: \(report.positionsFair) of \(report.positions). Two-sided requests evenly argued: \(report.pairsEven) of \(report.pairs).")
+                            ForEach(report.uneven.keys.sorted(), id: \.self) { id in
+                                Button { open([id], "\(report.judge.name) on \(id)") } label: { Text("\(id): \(report.uneven[id] ?? "")") }
+                                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    Text("Judging prompts are published in the code (Sources/ModelCheck/Judging.swift).").font(.caption).foregroundStyle(.secondary)
+                }
+            }
             section("Situations") {
                 Text(profile.consistency.text)
                 ForEach(profile.consistency.effects, id: \.condition) { effect in

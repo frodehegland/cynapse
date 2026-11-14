@@ -19,6 +19,7 @@ struct ModelDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 if app.runningEntry == entry.id { runningLine }
+                if let judging = app.judging { Text(judging).foregroundStyle(.secondary) }
                 if let problem = app.runProblem, app.selection == entry.id {
                     Text(problem).foregroundStyle(.secondary)
                 }
