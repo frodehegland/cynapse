@@ -21,9 +21,20 @@ struct LiveSettingsView: View {
     @AppStorage(LiveSettings.manuscriptStyle) private var manuscriptStyle = "rain"
     @AppStorage(LiveSettings.privacy) private var privacy = false
     @AppStorage(LiveSettings.theme) private var theme = "system"
+    @AppStorage(LiveSettings.retro) private var retro = false
+    @AppStorage(LiveSettings.retroPalette) private var retroPalette = "random"
+    @AppStorage(LiveSettings.fullScreen) private var fullScreen = true
 
     var body: some View {
         Form {
+            Toggle("Open in full screen", isOn: $fullScreen)
+            Toggle("Retro", isOn: $retro)
+            if retro {
+                Picker("Retro colours", selection: $retroPalette) {
+                    Text("A different one each time").tag("random")
+                    ForEach(RetroPalette.all) { Text($0.name).tag($0.name) }
+                }
+            }
             Picker("Look", selection: $style) {
                 Text("Change by itself").tag("random")
                 ForEach(LiveLook.allCases) { Text($0.title).tag($0.rawValue) }

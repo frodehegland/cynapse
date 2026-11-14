@@ -17,6 +17,9 @@ struct ConstellationView: View {
     let live: LiveState
     let bank: Bank?
     let ink: Color
+    /// Lines in Retro's line colour; otherwise the ink.
+    var line: Color? = nil
+    private var lineInk: Color { line ?? ink }
 
     private let axes = ["economic", "social", "geopolitical", "religious"]
 
@@ -40,7 +43,7 @@ struct ConstellationView: View {
         let a = CGPoint(x: centre.x - dx * radius, y: centre.y - dy * radius)
         let b = CGPoint(x: centre.x + dx * radius, y: centre.y + dy * radius)
         var line = Path(); line.move(to: a); line.addLine(to: b)
-        context.stroke(line, with: .color(ink.opacity(0.25)), lineWidth: 0.6)
+        context.stroke(line, with: .color(lineInk.opacity(0.45)), lineWidth: 0.6)
 
         let poles = bank?.axes[axis]
         context.draw(Text(poles?.negative ?? "").font(.system(size: 11, design: .monospaced)).foregroundStyle(ink.opacity(0.55)),
@@ -76,7 +79,7 @@ struct ConstellationView: View {
         if let lean = live.profile?.lean.first(where: { $0.axis == axis }), let value = lean.value, let interval = lean.interval {
             func point(_ v: Double) -> CGPoint { CGPoint(x: centre.x + dx * CGFloat(v) * radius, y: centre.y + dy * CGFloat(v) * radius) }
             var span = Path(); span.move(to: point(interval[0])); span.addLine(to: point(interval[1]))
-            context.stroke(span, with: .color(ink.opacity(0.6)), lineWidth: 4)
+            context.stroke(span, with: .color(lineInk.opacity(0.8)), lineWidth: 4)
             let m = point(value)
             context.fill(Path(ellipseIn: CGRect(x: m.x - 6, y: m.y - 6, width: 12, height: 12)), with: .color(ink))
         } else if let lean = live.profile?.lean.first(where: { $0.axis == axis }) {

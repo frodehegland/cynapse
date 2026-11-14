@@ -10,6 +10,9 @@ import ModelCheck
 struct LoomView: View {
     let live: LiveState
     let ink: Color
+    /// Lines in Retro's line colour; otherwise the ink.
+    var line: Color? = nil
+    private var lineInk: Color { line ?? ink }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
@@ -61,7 +64,7 @@ struct LoomView: View {
             let answered = index < live.done
             let asking = index == live.done && live.running
             let pulse = asking ? 0.5 + 0.5 * sin(t * 6) : 0
-            context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(ink.opacity(answered ? 0.75 : 0.08 + 0.6 * pulse)))
+            context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(lineInk.opacity(answered ? 0.75 : 0.08 + 0.6 * pulse)))
         }
         // The thread being woven: the current request, in words.
         if let current = live.current {

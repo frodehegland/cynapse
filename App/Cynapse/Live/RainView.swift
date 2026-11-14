@@ -15,15 +15,20 @@ import QuartzCore
 struct RainView: NSViewRepresentable {
     let live: LiveState
     let privacy: Bool
+    /// Retro: the palette's colour, glowing in its line colour, as Author's
+    /// Matrix does in Retro.
+    var palette: RetroPalette? = nil
 
     func makeNSView(context: Context) -> RainNSView {
         let view = RainNSView()
         view.privacy = privacy
+        view.palette = palette
         return view
     }
 
     func updateNSView(_ view: RainNSView, context: Context) {
         view.privacy = privacy
+        view.palette = palette
         // A newly answered exchange: its prompt and answer side by side.
         if let last = live.exchanges.last, last.id != view.lastExchange {
             view.lastExchange = last.id
@@ -37,6 +42,7 @@ final class RainNSView: NSView {
     var pool: [String] = []
     var privacy = false
     var lastExchange: UUID?
+    var palette: RetroPalette?
     private var running = false
     private var nextPairColumn = 0
     private var busy: Set<Int> = []
@@ -47,7 +53,7 @@ final class RainNSView: NSView {
     private static let columnWidth: CGFloat = ceil(("M" as NSString).size(withAttributes: [.font: font]).width * 1.7)
     /// The longest text that falls whole; longer ones fall as their opening.
     private static let longest = 90
-    private let rainColor = NSColor(calibratedRed: 0.2, green: 1, blue: 0.35, alpha: 1)
+    private var rainColor: NSColor { palette?.text ?? NSColor(calibratedRed: 0.2, green: 1, blue: 0.35, alpha: 1) }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -127,6 +133,13 @@ final class RainNSView: NSView {
         head.contentsScale = scale
         head.alignmentMode = .center
         fall.addSublayer(head)
+
+        if let glow = palette?.line {
+            fall.shadowColor = glow.cgColor
+            fall.shadowRadius = 5
+            fall.shadowOpacity = 0.9
+            fall.shadowOffset = .zero
+        }
 
         let x = CGFloat(column) * width + width / 2
         let from = CGPoint(x: x, y: root.bounds.height + height / 2)

@@ -27,6 +27,9 @@ enum LiveSettings {
     static let manuscriptStyle = "LiveManuscriptStyle" // "scroll" or "rain"
     static let privacy = "LivePrivacy"
     static let theme = "LiveTheme"              // "system", "paper", "obsidian"
+    static let retro = "LiveRetro"
+    static let retroPalette = "LiveRetroPalette" // "random" or a palette's name
+    static let fullScreen = "LiveFullScreen"    // open in full screen
 }
 
 struct LiveView: View {
@@ -38,8 +41,13 @@ struct LiveView: View {
     @AppStorage(LiveSettings.manuscriptStyle) private var manuscriptStyle = "rain"
     @AppStorage(LiveSettings.privacy) private var privacy = false
     @AppStorage(LiveSettings.theme) private var theme = "system"
+    @AppStorage(LiveSettings.retro) private var retro = false
+    @AppStorage(LiveSettings.retroPalette) private var retroPaletteName = "random"
+    @AppStorage(LiveSettings.fullScreen) private var openFullScreen = true
 
     @State private var look: LiveLook = .manuscript
+    @State private var palette = RetroPalette.all.randomElement()!
+    @State private var toggleFullScreen = false
     @State private var controlsShown = true
     @State private var lastMove = Date()
     @State private var inspected: Exchange?
@@ -47,14 +55,17 @@ struct LiveView: View {
     @State private var lastModule: Item.Module?
 
     private var live: LiveState { app.live }
+    /// The Retro palette in use, or nil when Retro is off.
+    private var retroPalette: RetroPalette? { retro ? palette : nil }
     private var dark: Bool {
+        if retro { return true }
         switch theme {
-        case "paper": false
-        case "obsidian": true
-        default: systemScheme == .dark || look != .manuscript || manuscriptStyle == "rain"
+        case "paper": return false
+        case "obsidian": return true
+        default: return systemScheme == .dark || look != .manuscript || manuscriptStyle == "rain"
         }
     }
-    private var ink: Color { dark ? .white : Color(white: 0.08) }
+    private var ink: Color { retroPalette?.textColor ?? (dark ? .white : Color(white: 0.08)) }
     private var paper: Color { dark ? .black : Color(red: 0.98, green: 0.97, blue: 0.94) }
 
     var body: some View {
@@ -64,19 +75,22 @@ struct LiveView: View {
                 switch look {
                 case .manuscript:
                     if manuscriptStyle == "rain" {
-                        RainView(live: live, privacy: privacy)
+                        RainView(live: live, privacy: privacy, palette: retroPalette)
                     } else {
-                        ManuscriptView(live: live, ink: ink, privacy: privacy) { inspected = $0 }
+                        ManuscriptView(live: live, ink: ink, privacy: privacy, palette: retroPalette) { inspected = $0 }
                     }
                 case .constellation:
-                    ConstellationView(live: live, bank: app.bank, ink: ink)
+                    ConstellationView(live: live, bank: app.bank, ink: ink, line: retroPalette?.lineColor ?? ink)
+                        .retroGlow(retroPalette)
                 case .loom:
-                    LoomView(live: live, ink: ink)
+                    LoomView(live: live, ink: ink, line: retroPalette?.lineColor ?? ink)
+                        .retroGlow(retroPalette)
                 }
             }
             .transition(.opacity)
 
-            if density != "ambient" { hud }
+            FullScreenControl(request: $toggleFullScreen, fullScreenAtStart: openFullScreen).frame(width: 0, height: 0)
+            if density != "ambient" { hud.retroGlow(retroPalette) }
             if controlsShown { controls }
             if let profile = live.profile, !live.running {
                 ProfileCardView(profile: profile, status: "checked") { _, _ in }
@@ -94,8 +108,16 @@ struct LiveView: View {
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(.space) { cycle(); return .handled }
+        .onKeyPress(.escape) {
+            if NSApp.keyWindow?.styleMask.contains(.fullScreen) == true { toggleFullScreen = true; return .handled }
+            return .ignored
+        }
         .onKeyPress { _ in showControls(); return .ignored }
-        .onAppear { look = style == "random" ? .manuscript : (LiveLook(rawValue: style) ?? .manuscript) }
+        .onAppear {
+            look = style == "random" ? .manuscript : (LiveLook(rawValue: style) ?? .manuscript)
+            palette = RetroPalette.named(retroPaletteName)
+        }
+        .onChange(of: retroPaletteName) { _, new in palette = RetroPalette.named(new) }
         .onChange(of: style) { _, new in if let l = LiveLook(rawValue: new) { look = l } }
         .task { await autoCycle() }
         .sheet(item: $inspected) { ExchangeDrawer(exchange: $0) }
@@ -119,6 +141,7 @@ struct LiveView: View {
         }
         .padding(24)
         .font(.system(size: 12, design: .monospaced))
+        .foregroundStyle(retroPalette?.textColor ?? ink)
         .allowsHitTesting(false)
     }
 
@@ -169,7 +192,11 @@ struct LiveView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 330)
+                Toggle("Retro", isOn: $retro).toggleStyle(.switch).controlSize(.small)
                 Toggle("Hide charged wording", isOn: $privacy).toggleStyle(.switch).controlSize(.small)
+                Button { toggleFullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                    .help("Full screen (⌃⌘F)")
+                    .keyboardShortcut("f", modifiers: [.control, .command])
             }
             .padding(24)
         }

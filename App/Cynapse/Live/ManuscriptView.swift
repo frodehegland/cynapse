@@ -9,6 +9,7 @@ struct ManuscriptView: View {
     let live: LiveState
     let ink: Color
     let privacy: Bool
+    var palette: RetroPalette? = nil
     var inspect: (Exchange) -> Void
 
     var body: some View {
@@ -25,6 +26,7 @@ struct ManuscriptView: View {
                     Color.clear.frame(height: 220)
                 }
                 .frame(maxWidth: 760)
+                .retroGlow(palette)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 40)
             }
@@ -45,11 +47,12 @@ struct ManuscriptView: View {
                 .tracking(1.2)
                 .opacity(0.5)
             Text(privacy && exchange.isSensitive ? "A question on a contested subject." : exchange.prompt)
-                .font(.system(size: 24, weight: .regular, design: .serif))
+                .font(.system(size: palette == nil ? 24 : 20, weight: .regular, design: palette == nil ? .serif : .monospaced))
                 .lineSpacing(4)
             Text(exchange.answer.isEmpty ? "…" : exchange.answer)
-                .font(.system(size: 17, design: .serif))
-                .italic()
+                .font(.system(size: palette == nil ? 17 : 15, design: palette == nil ? .serif : .monospaced))
+                .italic(palette == nil)
+                .foregroundStyle(palette?.lineColor ?? ink)
                 .opacity(0.8)
                 .lineLimit(exchange.finished ? 8 : nil)
             if let plain = exchange.plain {
