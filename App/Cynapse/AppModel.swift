@@ -215,10 +215,31 @@ final class AppModel {
                 var profile = stored.profile
                 profile.judges = reports
                 profile.judgeAgreement = Judging.agreement(reports)
+                profile.report = profile.reportLines().map { "\($0.heading): \($0.text)" }
                 try? profile.jsonData().write(to: stored.url)
                 self.profiles[entry.id] = ProfileStore.profiles(for: entry)
             }
         }
+    }
+
+    /// The Live View with no check running: the selected model's last check
+    /// replayed from its transcript — real questions and answers, in order.
+    func replayLatest() {
+        guard runningEntry == nil, let bank, let entry = selected ?? entries.first,
+              let stored = profiles[entry.id]?.first(where: { $0.profile.run.kind != .weekly }) ?? profiles[entry.id]?.first else { return }
+        let records = ProfileStore.records(of: stored)
+        guard !records.isEmpty else { return }
+        live.reset(bank: bank, verified: true)
+        live.setPlan(records.map(\.ask))
+        live.apply(.started(model: stored.profile.model, bank: bank.bank, planned: records.count, mode: stored.profile.run.kind))
+        for (index, record) in records.enumerated() {
+            live.apply(.asking(record.ask, index: index + 1, of: records.count))
+            live.apply(.answered(record, index: index + 1, of: records.count))
+        }
+        for outcome in Scorer.outcomes(records, bank: bank) {
+            live.apply(.scored(outcome, plain: outcome.plainText(item: bank.item(outcome.itemId))))
+        }
+        live.apply(.finished(stored.profile))
     }
 
     /// Stops the check; what was answered is kept, and the next check

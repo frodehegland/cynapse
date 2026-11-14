@@ -55,7 +55,9 @@ enum ProfileStore {
 
     /// Saves a finished run: the profile, and the transcript moved beside it.
     @discardableResult
-    static func save(_ profile: Profile, for entry: ModelEntry) throws -> StoredProfile {
+    static func save(_ incoming: Profile, for entry: ModelEntry) throws -> StoredProfile {
+        var profile = incoming
+        profile.report = profile.reportLines().map { "\($0.heading): \($0.text)" }
         let stamp = profile.createdAt.replacingOccurrences(of: ":", with: "-")
         let url = folder(for: entry).appendingPathComponent("\(stamp).modelcheck.json")
         try profile.jsonData().write(to: url)

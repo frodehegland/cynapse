@@ -9,10 +9,11 @@ import SwiftUI
 import ModelCheck
 
 enum LiveLook: String, CaseIterable, Identifiable {
-    case manuscript, constellation, loom
+    case synapses, manuscript, constellation, loom
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .synapses: "Synapses"
         case .manuscript: "Manuscript"
         case .constellation: "Constellation"
         case .loom: "Loom"
@@ -45,7 +46,7 @@ struct LiveView: View {
     @AppStorage(LiveSettings.retroPalette) private var retroPaletteName = "random"
     @AppStorage(LiveSettings.fullScreen) private var openFullScreen = true
 
-    @State private var look: LiveLook = .manuscript
+    @State private var look: LiveLook = .synapses
     @State private var palette = RetroPalette.all.randomElement()!
     @State private var toggleFullScreen = false
     @State private var controlsShown = true
@@ -53,6 +54,7 @@ struct LiveView: View {
     @State private var inspected: Exchange?
     @State private var lastCycle = Date()
     @State private var lastModule: Item.Module?
+    @State private var cardHidden = false
 
     private var live: LiveState { app.live }
     /// The Retro palette in use, or nil when Retro is off.
@@ -73,6 +75,8 @@ struct LiveView: View {
             paper.ignoresSafeArea()
             Group {
                 switch look {
+                case .synapses:
+                    SynapseView(live: live, bank: app.bank, palette: retroPalette)
                 case .manuscript:
                     if manuscriptStyle == "rain" {
                         RainView(live: live, privacy: privacy, palette: retroPalette)
@@ -92,10 +96,12 @@ struct LiveView: View {
             FullScreenControl(request: $toggleFullScreen, fullScreenAtStart: openFullScreen).frame(width: 0, height: 0)
             if density != "ambient" { hud.retroGlow(retroPalette) }
             if controlsShown { controls }
-            if let profile = live.profile, !live.running {
+            if let profile = live.profile, !live.running, !cardHidden {
                 ProfileCardView(profile: profile, status: "checked") { _, _ in }
                     .frame(maxWidth: 640)
                     .padding(30)
+                    .onTapGesture { withAnimation { cardHidden = true } }
+                    .help("Click to see the network behind")
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
@@ -114,9 +120,11 @@ struct LiveView: View {
         }
         .onKeyPress { _ in showControls(); return .ignored }
         .onAppear {
-            look = style == "random" ? .manuscript : (LiveLook(rawValue: style) ?? .manuscript)
+            look = style == "random" ? .synapses : (LiveLook(rawValue: style) ?? .synapses)
             palette = RetroPalette.named(retroPaletteName)
+            if !live.running && live.exchanges.isEmpty { app.replayLatest() }
         }
+        .onChange(of: live.running) { _, running in if running { cardHidden = false } }
         .onChange(of: retroPaletteName) { _, new in palette = RetroPalette.named(new) }
         .onChange(of: style) { _, new in if let l = LiveLook(rawValue: new) { look = l } }
         .task { await autoCycle() }
@@ -191,7 +199,7 @@ struct LiveView: View {
                     ForEach(LiveLook.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 330)
+                .frame(width: 420)
                 Toggle("Retro", isOn: $retro).toggleStyle(.switch).controlSize(.small)
                 Toggle("Hide charged wording", isOn: $privacy).toggleStyle(.switch).controlSize(.small)
                 Button { toggleFullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }

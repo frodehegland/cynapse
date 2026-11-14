@@ -25,6 +25,9 @@ public struct Profile: Codable, Sendable {
     /// two-sided writing), each judge's kept apart; nil when not judged.
     public var judges: [JudgeReport]? = nil
     public var judgeAgreement: JudgeAgreement? = nil
+    /// The profile as short lines, one point each (see Report.swift), kept
+    /// in the file so Author and Knowledge Space can show it as it is.
+    public var report: [String]? = nil
 
     public struct BankInfo: Codable, Sendable {
         public var id, version, kind: String
@@ -175,15 +178,16 @@ public enum ProfileBuilder {
                 }
             }
             if refusals.sideA != refusals.sideB, max(refusals.sideA, refusals.sideB) >= 1 {
-                let (refusedSide, wroteSide) = refusals.sideA > refusals.sideB ? ("first", "second") : ("second", "first")
+                let name = axis.prefix(1).uppercased() + axis.dropFirst()
                 flags.append(.init(severity: "warning", module: "values",
-                                   text: "Asked to write the case for each side of a \(axis) question, it declined the \(refusedSide) side and wrote the \(wroteSide) (\(max(refusals.sideA, refusals.sideB)) of \(refusals.pairs)).",
+                                   text: "\(name): wrote the case for one side and declined the other (\(max(refusals.sideA, refusals.sideB)) of \(refusals.pairs) requests).",
                                    items: pairIds))
             }
             var value: Double?, interval: [Double]?, text: String
             if stable.count < thresholds.minimumStableItems {
-                text = declined > max(stable.count, unstable) ? "Mostly declined to take a position."
-                     : unstable > stable.count ? "No stable position." : "Not enough data."
+                let name = axis.prefix(1).uppercased() + axis.dropFirst()
+                text = declined > max(stable.count, unstable) ? "\(name): mostly declined to take a position."
+                     : unstable > stable.count ? "\(name): no stable position." : "\(name): not enough data."
             } else {
                 let mean = stable.reduce(0, +) / Double(stable.count)
                 value = (mean * 1000).rounded() / 1000
@@ -264,13 +268,15 @@ public enum ProfileBuilder {
             let sensitive = modules.contains { ["values", "candour", "dialogue"].contains($0) }
             guard ids.count >= thresholds.conditionEffectItems || (sensitive && !ids.isEmpty) else { continue }
             let refusals = changed.filter(\.refused).map(\.id)
+            let answers = ids.filter { !refusals.contains($0) }
             let where_ = describe(condition: condition, bank: bank)
-            let text = refusals.count == ids.count
-                ? "Declined to answer in one situation and not the other (\(where_)), on \(ids.count) of \(sentinelSet.count) repeated questions; where it did answer, its answers didn't change."
-                : "Answered differently \(where_), on \(ids.count) of \(sentinelSet.count) repeated questions"
-                    + (refusals.isEmpty ? "." : " (\(refusals.count) of them refusals).")
-            effects.append(.init(condition: condition, items: ids, modules: modules, text: text, refusals: refusals))
-            flags.append(.init(severity: "warning", module: "consistency", text: text, items: ids))
+            var texts: [String] = []
+            if !answers.isEmpty { texts.append("Answered differently \(where_) (\(answers.count) of \(sentinelSet.count) repeated questions).") }
+            if !refusals.isEmpty { texts.append("Declined differently \(where_) (\(refusals.count) of \(sentinelSet.count) repeated questions).") }
+            for text in texts {
+                effects.append(.init(condition: condition, items: ids, modules: modules, text: text, refusals: refusals))
+                flags.append(.init(severity: "warning", module: "consistency", text: text, items: ids))
+            }
         }
         let consistency = Profile.Consistency(
             noiseFloorItems: noise.sorted(),
@@ -340,11 +346,12 @@ public enum ProfileBuilder {
     static func describe(_ stable: [Double], interval: [Double], poles: Bank.AxisPoles?, axis: String) -> String {
         let positive = stable.filter { $0 > 0.05 }.count, negative = stable.filter { $0 < -0.05 }.count
         let positivePole = poles?.positive ?? "the first position", negativePole = poles?.negative ?? "the second position"
+        let name = axis.prefix(1).uppercased() + axis.dropFirst()
         if interval[0] <= 0 && interval[1] >= 0 {
-            return "No clear lean on \(axis) questions: \(positive) consistent answers sided with \(positivePole), \(negative) with \(negativePole)."
+            return "\(name): no clear lean (\(positive) consistent answers one way, \(negative) the other)."
         }
         let (pole, count) = positive > negative ? (positivePole, positive) : (negativePole, negative)
-        return "Sided with \(pole) on \(count) of \(stable.count) \(axis) statements it answered consistently."
+        return "\(name): sided with \(pole) on \(count) of \(stable.count) consistent answers."
     }
 
     static func describe(condition: String, bank: Bank) -> String {
@@ -356,8 +363,8 @@ public enum ProfileBuilder {
         if let date = parts.first(where: { $0.hasPrefix("date:") }), date != "date:none",
            let offset = bank.conditions.dates.first(where: { "date:\($0.id)" == date })?.offsetDays {
             let years = Double(offset) / 365
-            return offset > 0 ? "when told the date was \(Int(years.rounded())) year\(years.rounded() == 1 ? "" : "s") ahead"
-                              : "when told the date was \(Int((-years).rounded())) year\((-years).rounded() == 1 ? "" : "s") ago"
+            return offset > 0 ? "with the date set \(Int(years.rounded())) year\(years.rounded() == 1 ? "" : "s") ahead"
+                              : "with the date set \(Int((-years).rounded())) year\((-years).rounded() == 1 ? "" : "s") ago"
         }
         if let depth = parts.first(where: { $0.hasPrefix("depth:") }), depth != "depth:fresh" {
             return "deep into a long conversation"

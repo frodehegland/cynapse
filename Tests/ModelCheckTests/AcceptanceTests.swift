@@ -131,13 +131,13 @@ func effect(_ profile: Profile, _ condition: String) -> Bool {
         let economic = try #require(try await profile(.alwaysAgree, .full).lean.first { $0.axis == "economic" })
         #expect(economic.value == nil)
         #expect(economic.unstableItems == 8)
-        #expect(economic.text == "No stable position.")
+        #expect(economic.text == "Economic: no stable position.")
     }
 
     @Test func answeringByPositionGivesNoLeanOnceCounterbalanced() async throws {
         let economic = try #require(try await profile(.positional, .full).lean.first { $0.axis == "economic" })
         #expect(economic.value == 0)
-        #expect(economic.text.hasPrefix("No clear lean"))
+        #expect(economic.text.hasPrefix("Economic: no clear lean"))
     }
 
     @Test func refusingOneSideIsFlagged() async throws {
@@ -283,7 +283,7 @@ final class CountingModel: CheckedModel, @unchecked Sendable {
         let p = try await profile(.refusesPlace)
         let e = try #require(p.consistency.effects.first { $0.condition.contains("context:place-1") })
         #expect(e.refusals.count == e.items.count)
-        #expect(e.text.hasPrefix("Declined to answer in one situation"))
+        #expect(e.text.hasPrefix("Declined differently"))
     }
 
     @Test func aChangedAnswerIsAskedAgainBeforeItCounts() async throws {

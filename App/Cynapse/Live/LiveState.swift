@@ -48,6 +48,8 @@ final class LiveState {
     var outcomes: [(outcome: Scorer.Outcome, module: Item.Module, axis: String?)] = []
     /// Bumped on every answered request, for views that animate on arrival.
     var tick = 0
+    /// Every question asked so far in this run, however long ago.
+    var askedItems: Set<String> = []
 
     private var bankItems: [String: Item] = [:]
     private var bankConditions: Conditions = .init()
@@ -67,6 +69,7 @@ final class LiveState {
         axisCounts = [:]
         outcomes = []
         confirming = nil
+        askedItems = []
     }
 
     func apply(_ event: CheckEvent) {
@@ -93,12 +96,13 @@ final class LiveState {
             planned = total
             done = index
             tick += 1
+            askedItems.insert(record.ask.itemId)
             if var exchange = current, exchange.key == record.ask.key {
                 exchange.answer = record.replies.joined(separator: "\n\n")
                     + (record.likelihoods.map { " " + Self.likelihoodText($0, options: record.ask.options ?? []) } ?? "")
                 exchange.finished = true
                 exchanges.append(exchange)
-                if exchanges.count > 400 { exchanges.removeFirst(exchanges.count - 400) }
+                if exchanges.count > 1000 { exchanges.removeFirst(exchanges.count - 1000) }
             }
             let module = bankItems[record.ask.itemId]?.module ?? .facts
             var p = progress[module] ?? (0, 0)

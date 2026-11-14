@@ -38,18 +38,17 @@ func printJSON<T: Encodable>(_ value: T) {
 }
 
 func summary(_ profile: Profile) {
-    print("Model:     \(profile.model.name)")
-    print("Accuracy:  Right on \(profile.accuracy.correct) of \(profile.accuracy.answerable) checkable questions. "
-          + "Made up an answer to \(profile.accuracy.invented) of \(profile.accuracy.unanswerable) questions that have none.")
-    print("Candour:   Kept its answer when the asker's view was added in \(profile.candour.held) of \(profile.candour.items) cases"
-          + (profile.candour.declined > 0 ? " (declined to answer \(profile.candour.declined))" : "")
-          + (profile.candour.ladders > 0 ? "; gave way to pressure alone in \(profile.candour.changedUnderPressureOnly) of \(profile.candour.ladders) conversations." : "."))
-    for lean in profile.lean {
-        print("Lean:      \(lean.axis): \(lean.text) (\(lean.stableItems) stable, \(lean.unstableItems) unstable)")
-    }
-    print("Situations: \(profile.consistency.text)")
-    for flag in profile.flags { print("  ⚠︎ \(flag.text)  [\(flag.items.joined(separator: ", "))]") }
-    print("Limits:    \(profile.limits.first ?? "")")
+    print(profile.model.name)
+    for line in profile.reportLines() { print("  \(line.heading.padding(toLength: 11, withPad: " ", startingAt: 0)) \(line.text)") }
+    print("  Limits")
+    for limit in profile.limits { print("    \(limit)") }
+}
+
+/// The profile with its report lines filled in, as written to disk.
+func withReport(_ profile: Profile) -> Profile {
+    var p = profile
+    p.report = p.reportLines().map { "\($0.heading): \($0.text)" }
+    return p
 }
 
 var args = Array(CommandLine.arguments.dropFirst())
@@ -177,6 +176,7 @@ case "score":
                                        createdAt: existing.flatMap { ISO8601DateFormatter().date(from: $0.createdAt) } ?? Date())
     profile.judges = existing?.judges
     profile.judgeAgreement = existing?.judgeAgreement
+    profile = withReport(profile)
     if let profilePath {
         try? profile.jsonData().write(to: URL(fileURLWithPath: profilePath))
         summary(profile)
@@ -256,6 +256,7 @@ case "run":
                 }
                 if let agreement = profile.judgeAgreement { print(agreement.text) }
             }
+            profile = withReport(profile)
             try profile.jsonData().write(to: base.appendingPathExtension("modelcheck.json"))
             // A run that drew on the hidden pool: a public transcript with the
             // pool's questions and answers held back until it is released.

@@ -32,7 +32,11 @@ enum Snapshot {
                 render(LiveSnapshot(look: .loom).environment(app), "live-loom-running", folder)
                 while app.runningEntry != nil { try? await Task.sleep(for: .milliseconds(300)) }
             }
+            if app.live.exchanges.isEmpty { app.replayLatest() }
+            render(LiveSnapshot(look: .synapses).environment(app), "live-synapses", folder)
             render(LiveSnapshot(look: .constellation).environment(app), "live-constellation-done", folder)
+            render(ProfileCardView(profile: app.live.profile ?? app.profiles[entry.id]!.first!.profile, status: "checked") { _, _ in }
+                    .padding(20).frame(width: 760).environment(app), "card", folder, size: CGSize(width: 760, height: 900))
             render(ModelDetailView(entry: entry).environment(app).frame(width: 900, height: 1500), "detail", folder, size: CGSize(width: 900, height: 1500))
             print("Wrote snapshots to \(folder.path)")
             exit(0)
@@ -56,6 +60,7 @@ struct LiveSnapshot: View {
         ZStack {
             Color.black
             switch look {
+            case .synapses: SynapseView(live: app.live, bank: app.bank)
             case .manuscript: ManuscriptView(live: app.live, ink: .white, privacy: false) { _ in }
             case .constellation: ConstellationView(live: app.live, bank: app.bank, ink: .white)
             case .loom: LoomView(live: app.live, ink: .white)
