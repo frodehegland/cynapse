@@ -207,6 +207,10 @@ struct LiveView: View {
             }
             if let current = live.current, !current.situation.isEmpty { Text(current.situation).frame(maxWidth: 360, alignment: .trailing) }
             if let confirming = live.confirming { Text(confirming).frame(maxWidth: 360, alignment: .trailing) }
+            // A check that stopped says why here too, not only in the main window.
+            if let problem = app.runProblem {
+                Text(problem).foregroundStyle(Assessment.wrong.color).frame(maxWidth: 360, alignment: .trailing)
+            }
             if density == "diagnostic", let current = live.current {
                 Text(current.key).opacity(0.6)
             }

@@ -30,6 +30,12 @@ public struct AppleModel: StreamingCheckedModel {
         }
     }
 
+    static func isRefusal(_ error: Error) -> Bool {
+        if error is ModelRefusal { return true }
+        let text = (String(describing: error) + " " + error.localizedDescription).lowercased()
+        return text.contains("guardrail") || text.contains("refusal") || text.contains("unsafe")
+    }
+
     public var identity: ModelIdentity {
         let os = ProcessInfo.processInfo.operatingSystemVersionString
         return ModelIdentity(name: "Apple Intelligence (\(os))", provider: "apple",
@@ -65,6 +71,13 @@ public struct AppleModel: StreamingCheckedModel {
             default:
                 throw error
             }
+        } catch {
+            // The guardrails don't always arrive as a GenerationError (seen
+            // on macOS 27: the stream ended with a bridged error). Whatever
+            // the type, a guardrail or a refusal is the model declining, and
+            // is recorded as that; it must never stop the check.
+            if Self.isRefusal(error) { throw ModelRefusal(error.localizedDescription) }
+            throw error
         }
         return text
     }
