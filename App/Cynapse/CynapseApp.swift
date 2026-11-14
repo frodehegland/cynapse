@@ -22,11 +22,18 @@ struct CynapseApp: App {
         .commands {
             CommandGroup(replacing: .help) {
                 Link("Cynapse on GitHub", destination: URL(string: "https://github.com/frodehegland/cynapse")!)
-                Link("How the check works", destination: URL(string: "https://github.com/frodehegland/cynapse/blob/main/docs/build-brief-v2.md")!)
+                OpenWindowButton(title: "Cynapse Guide", id: "guide")
+                Link("The design brief", destination: URL(string: "https://github.com/frodehegland/cynapse/blob/main/docs/build-brief-v2.md")!)
             }
             CommandMenu("Questions") {
                 OpenWindowButton(title: "See the Questions", id: "questions")
                     .keyboardShortcut("q", modifiers: [.command, .shift])
+                OpenWindowButton(title: "Write New Questions with an AI…", id: "questions") {
+                    // The window first, then its sheet.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NotificationCenter.default.post(name: .writeNewQuestions, object: nil)
+                    }
+                }
             }
         }
 
@@ -41,6 +48,10 @@ struct CynapseApp: App {
                 .environment(app)
         }
 
+        Window("Cynapse Guide", id: "guide") {
+            GuideView()
+        }
+
         Settings {
             SettingsView()
                 .environment(app)
@@ -52,5 +63,6 @@ private struct OpenWindowButton: View {
     @Environment(\.openWindow) private var openWindow
     let title: String
     let id: String
-    var body: some View { Button(title) { openWindow(id: id) } }
+    var then: () -> Void = {}
+    var body: some View { Button(title) { openWindow(id: id); then() } }
 }

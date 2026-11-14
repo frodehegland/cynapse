@@ -73,6 +73,9 @@ public extension Profile {
         let kind = ["full": "Full check", "quick": "Quick check", "weekly": "Weekly re-check"][run.kind.rawValue] ?? "Check"
         let day = ISO8601DateFormatter().date(from: createdAt).map { $0.formatted(date: .long, time: .omitted) } ?? createdAt
         add("Check", "\(kind) on \(day): \(run.prompts) questions asked.")
+        if let own = bank.ownItems, !own.isEmpty {
+            add("Check", "Included \(own.count) of your own question\(own.count == 1 ? "" : "s"), written with an AI; they are not part of the signed, published set.", own)
+        }
         return lines
     }
 }

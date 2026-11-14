@@ -16,8 +16,20 @@ final class AppModel {
 
     var entries: [ModelEntry] = []
     var selection: ModelEntry.ID?
+    /// The signed bank and the person's own questions after it.
     var bank: Bank?
+    /// The signed bank alone, exactly as published.
+    var signedBank: Bank?
+    /// Questions the person wrote with an online AI (Questions ▸ Write New
+    /// Questions with an AI…), unsigned and kept apart.
+    var ownItems: [Item] = []
     var bankProblem: String?
+
+    /// Whether checks ask the person's own questions too (weekly re-checks
+    /// never do: they are measured against the signed set alone).
+    var askOwnQuestions = UserDefaults.standard.object(forKey: "AskOwnQuestions") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(askOwnQuestions, forKey: "AskOwnQuestions") }
+    }
     var profiles: [ModelEntry.ID: [StoredProfile]] = [:]
     /// Each local model's current fingerprint, worked out in the background.
     var fingerprints: [ModelEntry.ID: (hash: String, size: Int64)] = [:]
@@ -53,12 +65,27 @@ final class AppModel {
             return
         }
         do {
-            bank = try BankSignature.loadVerified(url, publicKey: Self.bankPublicKey)
+            signedBank = try BankSignature.loadVerified(url, publicKey: Self.bankPublicKey)
             bankProblem = nil
         } catch {
-            bank = nil
+            signedBank = nil
             bankProblem = "\(error)"
         }
+        ownItems = OwnQuestionsStore.load()
+        bank = signedBank?.adding(own: ownItems)
+    }
+
+    /// Keeps new questions of the person's own.
+    func addOwn(_ items: [Item]) {
+        ownItems += items.filter { item in !ownItems.contains { $0.id == item.id } }
+        OwnQuestionsStore.save(ownItems)
+        bank = signedBank?.adding(own: ownItems)
+    }
+
+    func removeOwn(_ id: String) {
+        ownItems.removeAll { $0.id == id }
+        OwnQuestionsStore.save(ownItems)
+        bank = signedBank?.adding(own: ownItems)
     }
 
     // MARK: Models
@@ -145,7 +172,8 @@ final class AppModel {
     // MARK: Checking
 
     func startCheck(_ entry: ModelEntry, mode: RunMode) {
-        guard runningEntry == nil, let bank else { return }
+        guard runningEntry == nil, let signedBank, let merged = bank else { return }
+        let bank = mode != .weekly && askOwnQuestions ? merged : signedBank
         runProblem = nil
         let model: any CheckedModel
         do {

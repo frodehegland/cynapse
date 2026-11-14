@@ -34,6 +34,9 @@ public struct Profile: Codable, Sendable {
         /// The hidden pool drawn from, if any: its id, published fingerprint
         /// and the items drawn.
         public var pool: PoolInfo?
+        /// The person's own questions asked in this check, written with an
+        /// AI and not part of the signed bank; nil when there were none.
+        public var ownItems: [String]? = nil
     }
     public struct RunInfo: Codable, Sendable {
         public var kind: RunMode
@@ -322,7 +325,8 @@ public enum ProfileBuilder {
             createdAt: formatter.string(from: createdAt),
             model: model,
             systemPrompt: records.first?.ask.system,
-            bank: .init(id: bank.bank.id, version: bank.bank.version, kind: bank.bank.kind, pool: bank.pool),
+            bank: .init(id: bank.bank.id, version: bank.bank.version, kind: bank.bank.kind, pool: bank.pool,
+                        ownItems: Optional(bank.items.filter(\.isOwn).map(\.id)).flatMap { $0.isEmpty ? nil : $0 }),
             run: .init(kind: mode, prompts: records.count,
                        durationSeconds: Int(records.reduce(0) { $0 + $1.seconds }.rounded()),
                        completed: completed, methods: methods),

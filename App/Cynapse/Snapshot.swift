@@ -76,9 +76,27 @@ enum Snapshot {
                 }
                 print("panel check: picked \(exchange.key)")
             }
+            await renderWindow(NewQuestionsView().environment(app), "new-questions", folder, size: CGSize(width: 640, height: 720))
+            await renderWindow(GuideView(), "guide", folder, size: CGSize(width: 760, height: 1400))
             print("Wrote snapshots to \(folder.path)")
             exit(0)
         }
+    }
+
+    /// Through a real window, for views a plain render can't draw (scroll
+    /// views, controls).
+    static func renderWindow<V: View>(_ view: V, _ name: String, _ folder: URL, size: CGSize) async {
+        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
+        host.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = host
+        window.orderBack(nil)
+        try? await Task.sleep(for: .seconds(1.5))
+        if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            try? bitmap.representation(using: .png, properties: [:])?.write(to: folder.appendingPathComponent("\(name).png"))
+        }
+        window.orderOut(nil)
     }
 
     static func render<V: View>(_ view: V, _ name: String, _ folder: URL, size: CGSize = CGSize(width: 1280, height: 800)) {

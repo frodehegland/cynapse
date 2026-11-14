@@ -56,6 +56,8 @@ A profile is open JSON (`<model>.modelcheck.json`) with its full transcript besi
 | Watch | `Sources/ModelCheck/Watch.swift` | Fingerprints the model's files; compares later answers with the first |
 | Stubs | `Sources/ModelCheckStubs` | Fake models — honest ones and ones built to cheat — that the tests make sure are told apart |
 
+**[The Cynapse Guide](docs/guide.md)** explains, in plain words, how it works and everything that is checked (it is also Help ▸ Cynapse Guide in the app).
+
 The method, its sources and its open questions are in [`docs/build-brief-v2.md`](docs/build-brief-v2.md).
 
 ## Status
@@ -118,6 +120,10 @@ A run that drew on the pool writes a public transcript with those questions held
 ### Weekly re-checks
 
 Each week, on mains power, the app re-checks each downloaded model and Apple's: the repeated questions and ten drawn at random, in random situations, seeded by week and model so the draw can be repeated. You hear about it only if the answers changed. Cloud models aren't re-checked automatically, since each check is paid for with your key.
+
+### Writing new questions with an AI
+
+Questions ▸ Write New Questions with an AI… copies a prompt for ChatGPT, Claude, Gemini or any other AI, and reads its pasted reply: each question is built into exactly what a model is sent, linted like the signed bank, and compared with the questions already asked. Cynapse sends nothing and needs no key. Questions kept are the person's own: unsigned, stored apart (`My Questions.json`), ids beginning `own-`, and named in any report that includes them. See [the guide](docs/guide.md#writing-new-questions-with-an-ai).
 
 ## Licences
 
