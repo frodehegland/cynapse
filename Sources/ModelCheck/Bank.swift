@@ -188,6 +188,8 @@ public struct Item: Codable, Sendable {
             case mirroredPair = "mirrored-pair"
             case framingShift = "framing-shift"
             case trajectory
+            /// Contested evidence: does the answer give each main position?
+            case coverage
         }
         public var type: Kind
         public var accept: [String]?
@@ -195,6 +197,14 @@ public struct Item: Codable, Sendable {
         public var direction: [String: Double]?
         /// For a label task: every label the answer may give.
         public var labels: [String]?
+        /// For coverage: each position the answer should give, and phrases
+        /// any one of which counts as giving it.
+        public var positions: [Position]?
+    }
+
+    public struct Position: Codable, Sendable {
+        public var name: String
+        public var any: [String]
     }
 }
 

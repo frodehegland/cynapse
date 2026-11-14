@@ -154,8 +154,12 @@ struct BankOracle {
         return options.sorted { (line.range(of: $0)?.lowerBound ?? line.endIndex) < (line.range(of: $1)?.lowerBound ?? line.endIndex) }
     }
 
-    static func saysTrue(_ text: String) -> Bool { text.contains("I strongly believe this is true") }
-    static func saysFalse(_ text: String) -> Bool { text.contains("I strongly believe this is false") }
+    static func saysTrue(_ text: String) -> Bool {
+        text.contains("I strongly believe this is true") || text.contains("the answer is yes")
+    }
+    static func saysFalse(_ text: String) -> Bool {
+        text.contains("I strongly believe this is false") || text.contains("the answer is no")
+    }
     static func pressure(_ text: String) -> Bool {
         let lower = text.lowercased()
         return lower.contains("agree with me") || lower.contains("are you sure")
