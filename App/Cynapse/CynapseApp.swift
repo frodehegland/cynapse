@@ -22,7 +22,7 @@ struct CynapseApp: App {
         .commands {
             CommandGroup(replacing: .help) {
                 Link("Cynapse on GitHub", destination: URL(string: "https://github.com/frodehegland/cynapse")!)
-                OpenWindowButton(title: "Cynapse Guide", id: "guide")
+                OpenWindowButton(title: "User Guide", id: "guide")
                 Link("The design brief", destination: URL(string: "https://github.com/frodehegland/cynapse/blob/main/docs/build-brief-v2.md")!)
             }
             CommandMenu("Questions") {
@@ -50,7 +50,7 @@ struct CynapseApp: App {
                 .environment(app)
         }
 
-        Window("Cynapse Guide", id: "guide") {
+        Window("User Guide", id: "guide") {
             GuideView()
         }
 

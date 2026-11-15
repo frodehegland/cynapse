@@ -7,6 +7,16 @@ import ModelCheckModels
 
 struct ContentView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.openWindow) private var openWindow
+
+    static let howItWorks = """
+    Cynapse asks the model you choose a published, signed set of questions, worded as a writing app would word real \
+    requests, and reads every answer by plain rules on this Mac; no AI marks another. The Character Check shows \
+    whether it is right, makes things up, gives way to pressure, where it leans, and whether its answers change with \
+    the date or who is asking. The Analysis Check shows how it draws concepts from a text, summarises and compares. \
+    Every line of the results opens the exact questions and answers behind it. Nothing is averaged into a score, and \
+    nothing of yours is sent.
+    """
     @State private var addingCloud = false
     @State private var downloadingModel = false
     @State private var writingQuestions = false
@@ -27,6 +37,18 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 6) {
+                // How it works, in a paragraph, and the full guide under it.
+                Text(Self.howItWorks)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button { openWindow(id: "guide") } label: {
+                    Label("User Guide", systemImage: "book")
+                        .frame(maxWidth: .infinity)
+                }
+                .help("Everything Cynapse can do, and exactly how it works, with the source on GitHub")
+                Divider().padding(.vertical, 2)
                 // New questions from any online AI, carried by hand: the
                 // prompt out on the clipboard, the reply back the same way.
                 Button { copyForQuestions() } label: {
