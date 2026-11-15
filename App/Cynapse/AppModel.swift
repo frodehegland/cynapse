@@ -4,6 +4,7 @@
 import Foundation
 import Observation
 import AppKit
+import UniformTypeIdentifiers
 import ModelCheck
 import ModelCheckModels
 
@@ -300,6 +301,34 @@ final class AppModel {
                 self.profiles[entry.id] = self.filled(ProfileStore.profiles(for: entry))
             }
         }
+    }
+
+    // MARK: The full report
+
+    /// Saves the model's results as one Markdown document: the Character
+    /// Check shown (else the latest) and the latest Analysis Check, each with
+    /// what changed since the check of the same kind before it.
+    func exportReport(_ entry: ModelEntry, character shown: StoredProfile?) {
+        guard let bank = lookupBank else { return }
+        let all = profiles[entry.id] ?? []
+        let character = shown ?? all.first { $0.profile.run.kind == .quick || $0.profile.run.kind == .full }
+        func check(_ stored: StoredProfile) -> MarkdownReport.Check {
+            let before = all.filter { $0.profile.run.kind == stored.profile.run.kind && $0.date < stored.date }.max { $0.date < $1.date }
+            return .init(profile: stored.profile, records: ProfileStore.records(of: stored),
+                         previous: before.map { ($0.profile, ProfileStore.records(of: $0)) })
+        }
+        let checks = [character, latestAnalysis(entry)].compactMap { $0 }.map(check)
+        guard !checks.isEmpty else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "md") ?? .plainText]
+        let day = Date().formatted(.iso8601.year().month().day())
+        panel.nameFieldStringValue = "Cynapse report – \(entry.name.replacingOccurrences(of: "/", with: "–")) – \(day).md"
+        panel.message = "The full report, as Markdown: every result, what changed, and every question with its answer."
+        panel.prompt = "Export"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let text = MarkdownReport.make(model: entry.name, checks: checks, bank: bank)
+        try? Data(text.utf8).write(to: url)
     }
 
     // MARK: External reviews

@@ -151,7 +151,14 @@ The Analysis Check shows how well the model works with a text. It gives the mode
 
 ## Reading the results
 
-A model's page shows its latest Character Check, then its Analysis Check, then the Character Check's details.
+A model's page opens on the two checks you can run. Below them come the results: first what changed since the check before, then the latest Character Check, its Analysis Check, and the Character Check's details.
+
+### What changed since the check before
+
+- When a model has been checked before, the results open with a box comparing this check with the previous one of the same kind: a quick Character Check with the quick one before, a full with a full, an Analysis Check with the Analysis Check before. Checks of different kinds ask different wordings, so they aren't compared.
+- Every question asked plainly in both is compared. Each one now read differently is listed: **Worse** (in red) first, then a **Moved** position (never rated, in grey), then **Better** (in green), each with how Cynapse read the answer before and now. Click one to see the question and the new answer.
+- The box is red if anything got worse, orange if answers changed otherwise, and green, saying so, if nothing changed.
+- If the model's files changed between the two checks, or for Apple's model the version of macOS, the box says so.
 
 ### The report
 
@@ -180,6 +187,7 @@ A model's page shows its latest Character Check, then its Analysis Check, then t
 
 - **External reviews:** ask an online AI to read the answers again. See [External reviews](#external-reviews).
 - **What this can't tell you:** what was not checked. A check shows behaviour on these questions; it cannot prove behaviour on everything.
+- **Export Full Report as Markdown…**, at the very bottom, saves everything as one document you can keep, share or print: what was checked, what changed since the check before, every line of the results with its rating, the external reviews, what the check can't tell, and every question as asked plainly with the model's exact answer and how Cynapse read it. It covers the Character Check shown and the latest Analysis Check.
 - **History:** every check of this model, newest first. Click one to show it; **Export…** copies it and its full transcript anywhere you choose. If the last two checks differ on the weekly questions, the ones that changed are named.
 
 ## The Live View

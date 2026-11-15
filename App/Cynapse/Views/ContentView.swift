@@ -28,6 +28,27 @@ struct ContentView: View {
         @Bindable var app = app
         NavigationSplitView {
             List(selection: $app.selection) {
+                // How it works, in a paragraph, and the full guide under it:
+                // part of the list, so it scrolls with it and never crowds out the models.
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        // A sidebar row keeps to one line unless told otherwise.
+                        Text(Self.howItWorks)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button { openWindow(id: "guide") } label: {
+                            Label("User Guide", systemImage: "book")
+                        }
+                        .controlSize(.small)
+                        .help("Everything Cynapse can do, and exactly how it works, with the source on GitHub")
+                    }
+                    .padding(.vertical, 4)
+                    .selectionDisabled()
+                }
                 section("On this Mac", app.entries.filter { if case .local = $0.kind { true } else { false } },
                         empty: "No downloaded models found. Models downloaded in Author or Knowledge Space appear here; or add a folder.")
                 section("Built into macOS", app.entries.filter { $0.kind == .apple }, empty: nil)
@@ -37,18 +58,6 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 6) {
-                // How it works, in a paragraph, and the full guide under it.
-                Text(Self.howItWorks)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Button { openWindow(id: "guide") } label: {
-                    Label("User Guide", systemImage: "book")
-                        .frame(maxWidth: .infinity)
-                }
-                .help("Everything Cynapse can do, and exactly how it works, with the source on GitHub")
-                Divider().padding(.vertical, 2)
                 // New questions from any online AI, carried by hand: the
                 // prompt out on the clipboard, the reply back the same way.
                 Button { copyForQuestions() } label: {
