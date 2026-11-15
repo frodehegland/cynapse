@@ -16,6 +16,8 @@ struct EvidenceView: View {
     var close: () -> Void
     /// False only for snapshots, which can't draw a scroll view.
     var scrolls = true
+    /// Room above the title: more in the Live View, to clear the top of the screen.
+    var topInset: CGFloat = 20
 
     /// The answers to this line's questions, by question; nil while reading.
     @State private var byItem: [String: [Record]]?
@@ -26,12 +28,15 @@ struct EvidenceView: View {
                 Text(evidence.title).font(.title3.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                Button { close() } label: { Image(systemName: "xmark.circle.fill") }
-                    .buttonStyle(.borderless)
+                Button("Close", systemImage: "xmark") { close() }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
                     .keyboardShortcut(.cancelAction)
-                    .help("Close")
+                    .help("Close (Esc)")
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.top, topInset)
+            .padding(.bottom, 16)
             Divider()
             if let byItem {
                 if byItem.isEmpty {

@@ -82,6 +82,8 @@ struct LiveView: View {
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(.escape) {
+            // The panel first, then the report, then full screen.
+            if picked != nil || evidence != nil { closePanel(); return .handled }
             if live.profile != nil, !live.running, !cardHidden { hideCard(); return .handled }
             if NSApp.keyWindow?.styleMask.contains(.fullScreen) == true { toggleFullScreen = true; return .handled }
             return .ignored
@@ -98,14 +100,17 @@ struct LiveView: View {
                                         set: { if !$0 { evidence = nil; picked = nil } })) {
             Group {
                 if let picked {
-                    ConnectionPanel(pick: picked, live: live, bank: app.liveBank ?? app.bank, privacy: privacy) { self.picked = nil }
+                    ConnectionPanel(pick: picked, live: live, bank: app.liveBank ?? app.bank, privacy: privacy) { closePanel() }
                         .id(picked.id)
                 } else if let evidence {
-                    EvidenceView(evidence: evidence) { self.evidence = nil }
+                    EvidenceView(evidence: evidence, close: { closePanel() }, topInset: 48)
                         .id(evidence.id)
                 }
             }
             .environment(\.colorScheme, .dark)
+            // Near black, so the panel sits with the network rather than over it.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(white: 0.05).ignoresSafeArea())
             .inspectorColumnWidth(min: 360, ideal: 460, max: 700)
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -228,6 +233,12 @@ struct LiveView: View {
         evidence = nil
         picked = nil
         app.startCheck(entry, mode: mode)
+    }
+
+    /// Closes the panel beside the network, whichever it is showing.
+    private func closePanel() {
+        picked = nil
+        evidence = nil
     }
 
     private func hideCard() {

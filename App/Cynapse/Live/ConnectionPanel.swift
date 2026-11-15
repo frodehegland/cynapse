@@ -35,12 +35,18 @@ struct ConnectionPanel: View {
                     Text(pick.itemId).font(.caption.monospaced()).foregroundStyle(.tertiary)
                 }
                 Spacer()
-                Button { close() } label: { Image(systemName: "xmark.circle.fill") }
-                    .buttonStyle(.borderless)
+                // A full-size button, held below the strip at the top of the
+                // screen, where the menu bar slides down in full screen and
+                // the hidden title bar takes clicks for dragging the window.
+                Button("Close", systemImage: "xmark") { close() }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
                     .keyboardShortcut(.cancelAction)
-                    .help("Close")
+                    .help("Close (Esc)")
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.top, 48)
+            .padding(.bottom, 16)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {

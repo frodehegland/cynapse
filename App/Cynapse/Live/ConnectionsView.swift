@@ -50,6 +50,8 @@ struct ConnectionsView: View {
     @State private var layoutChanged = -1e9
     /// The turn still to unwind, as the clusters come round to face the front.
     @State private var unwind: (from: Double, start: Double)?
+    /// The title clicked in the clusters: only its group is shown.
+    @State private var focus: String?
 
     private var checkDone: Bool { live.profile != nil && !live.running }
 
@@ -67,7 +69,12 @@ struct ConnectionsView: View {
             .contentShape(Rectangle())
             .gesture(rotation)
             .onTapGesture(coordinateSpace: .local) { location in
-                if let hit = hit(at: location, size: geometry.size) { pick(hit) }
+                // A title shows its group alone, and again shows them all.
+                if let group = titleHit(at: location, size: geometry.size) {
+                    withAnimation { focus = focus == group ? nil : group }
+                } else if let hit = hit(at: location, size: geometry.size) {
+                    pick(hit)
+                }
             }
         }
         .onAppear { if checkDone { setClustered(true) } }
@@ -139,6 +146,7 @@ struct ConnectionsView: View {
         }
         spinFrom = now
         clustered = on
+        if !on { focus = nil }
         // Carry on from wherever a half-made move had got to.
         layoutChanged = now - 3 * (on ? b : 1 - b)
     }
@@ -193,21 +201,59 @@ struct ConnectionsView: View {
         var best: (pick: ConnectionPick, score: Double)?
         func consider(_ pick: ConnectionPick, _ point: CGPoint, _ depth: Double) {
             let d = hypot(point.x - location.x, point.y - location.y)
-            guard d < 12 else { return }
+            guard d < 12 * dotScale else { return }
             let score = d - depth * 3
             if best == nil || score < best!.score { best = (pick, score) }
         }
         let placed = placement(bank: bank, t: Date.timeIntervalSinceReferenceDate)
-        for (id, p) in placed.items {
+        let shown = shownTest(placed)
+        for (id, p) in placed.items where shown(id) {
             let (sp, depth) = camera.project(p)
             consider(ConnectionPick(itemId: id, exchangeKey: nil), sp, depth)
         }
-        for exchange in live.exchanges.suffix(900) {
+        for exchange in live.exchanges.suffix(900) where shown(exchange.itemId) {
             guard let a = placed.answer(exchange) else { continue }
             let (sp, depth) = camera.project(a)
             consider(ConnectionPick(itemId: exchange.itemId, exchangeKey: exchange.key), sp, depth)
         }
         return best?.pick
+    }
+
+    /// How sparse the check is: 1 for the full set of questions (60 or
+    /// more), rising to 2.6 for a small one such as the Analysis Check's
+    /// nine. A sparse cloud is drawn with larger dots, closer together.
+    private var sparseness: Double {
+        let count = Double(max(1, bank?.items.count ?? 60))
+        return min(2.6, max(1, (60 / count).squareRoot()))
+    }
+    /// How far the cloud spreads: narrower as it thins.
+    private var spread: Double { 1 / pow(sparseness, 0.6) }
+    /// How large each dot is drawn: larger as the cloud thins.
+    private var dotScale: Double { pow(sparseness, 0.8) }
+
+    /// Whether a question's dots are shown: all of them, unless a title
+    /// was clicked, when only its group's.
+    private func shownTest(_ placed: Placement) -> (String) -> Bool {
+        guard let focus, let groups = placed.clusters?.groupOf else { return { _ in true } }
+        return { groups[$0] == focus }
+    }
+
+    /// The group of the title under a click, in the clusters. Titles are
+    /// monospaced, so each one's box is worked out from its length.
+    private func titleHit(at location: CGPoint, size: CGSize) -> String? {
+        guard let bank, clustered else { return nil }
+        let now = Date.timeIntervalSinceReferenceDate
+        let placed = placement(bank: bank, t: now)
+        guard let clusters = placed.clusters, placed.blend > 0.5 else { return nil }
+        let camera = self.camera(size: size, t: now)
+        for label in clusters.labels where label.strong && (focus == nil || focus == label.group) {
+            let (p, _) = camera.project(label.at)
+            let characters = label.text.count + (focus == label.group ? 11 : 0)
+            let w = Double(characters) * Double(label.size) * 0.62, h = Double(label.size) * 1.5
+            let box = CGRect(x: p.x - label.anchor.x * w, y: p.y - label.anchor.y * h, width: w, height: h).insetBy(dx: -6, dy: -6)
+            if box.contains(location) { return label.group }
+        }
+        return nil
     }
 
     /// Each kind of question has its own region of the cloud.
@@ -224,15 +270,16 @@ struct ConnectionsView: View {
     /// its own side of it.
     private func position(of item: Item) -> Point3 {
         let c = Self.centres[item.module] ?? Point3(x: 0, y: 0, z: 0)
-        return Point3(x: c.x * 0.35 + Scatter.unit(item.id, 1) * 0.62,
-                      y: c.y * 0.35 + Scatter.unit(item.id, 2) * 0.45,
-                      z: c.z * 0.35 + Scatter.unit(item.id, 3) * 0.55)
+        let s = spread
+        return Point3(x: (c.x * 0.35 + Scatter.unit(item.id, 1) * 0.62) * s,
+                      y: (c.y * 0.35 + Scatter.unit(item.id, 2) * 0.45) * s,
+                      z: (c.z * 0.35 + Scatter.unit(item.id, 3) * 0.55) * s)
     }
 
     /// An answer reaches out from its question, so the threads are long and
     /// cross one another, as synapses do.
     private func answerPosition(_ exchange: Exchange, near p: Point3) -> Point3 {
-        let r = 0.16 + 0.34 * abs(Scatter.unit(exchange.key, 4))
+        let r = (0.16 + 0.34 * abs(Scatter.unit(exchange.key, 4))) * spread
         var d = Point3(x: Scatter.unit(exchange.key, 5), y: Scatter.unit(exchange.key, 6) * 0.8, z: Scatter.unit(exchange.key, 7))
         let length = max(0.001, (d.x * d.x + d.y * d.y + d.z * d.z).squareRoot())
         d = Point3(x: d.x / length, y: d.y / length, z: d.z / length)
@@ -278,16 +325,17 @@ struct ConnectionsView: View {
         let asked = live.askedItems.union(live.current.map { [$0.itemId] } ?? [])
         let newest = live.exchanges.suffix(6).map(\.key)
         let ratings = live.assessments(bank: bank)
+        let shown = shownTest(placed)
 
         context.blendMode = .plusLighter
 
         // Threads between neighbouring questions: each to its nearest four.
-        for item in items {
+        for item in items where shown(item.id) {
             guard let p = itemPoints[item.id] else { continue }
             let near = items.filter { $0.id != item.id }
                 .sorted { distance(itemPoints[$0.id]!, p) < distance(itemPoints[$1.id]!, p) }
                 .prefix(4)
-            for other in near where other.id > item.id {
+            for other in near where other.id > item.id && shown(other.id) {
                 let (a, da) = project(p), (b, db) = project(itemPoints[other.id]!)
                 let lit = asked.contains(item.id) && asked.contains(other.id)
                 stroke(&context, a, b, questionColor.opacity(loose * (lit ? 0.7 : 0.12) * (0.35 + 0.65 * (da + db) / 2)), width: lit ? 0.8 : 0.5)
@@ -296,7 +344,7 @@ struct ConnectionsView: View {
 
         // Answers: joined to their question, and to the other answers to it.
         var lastAnswer: [String: (CGPoint, Double)] = [:]
-        for exchange in live.exchanges.suffix(900) {
+        for exchange in live.exchanges.suffix(900) where shown(exchange.itemId) {
             guard let q = itemPoints[exchange.itemId], let a = placed.answer(exchange) else { continue }
             let (qp, qd) = project(q)
             let (ap, ad) = project(a)
@@ -305,36 +353,36 @@ struct ConnectionsView: View {
             let depth = 0.3 + 0.7 * (qd + ad) / 2
             // Blue at the question, orange at the answer.
             gradientStroke(&context, qp, ap, from: questionColor.opacity((fresh ? 0.9 : 0.42) * depth),
-                           to: answerColor.opacity((fresh ? 1 : 0.55) * depth), width: fresh ? 1.3 : 0.6)
+                           to: answerColor.opacity((fresh ? 1 : 0.55) * depth), width: (fresh ? 1.3 : 0.6) * dotScale.squareRoot())
             if let (previous, pd) = lastAnswer[exchange.itemId] {
                 stroke(&context, previous, ap, answerColor.opacity(0.2 * (0.3 + 0.7 * (pd + ad) / 2)), width: 0.45)
             }
             lastAnswer[exchange.itemId] = (ap, ad)
-            glow(&context, ap, depth: ad, color: answerColor, radius: fresh ? 2.6 : 1.3, bright: fresh ? 1.15 : 0.85)
+            glow(&context, ap, depth: ad, color: answerColor, radius: (fresh ? 2.6 : 1.3) * dotScale, bright: fresh ? 1.15 : 0.85)
         }
 
         // The question being asked now: its thread reaching out as the
         // answer is written.
-        if let current = live.current, let q = itemPoints[current.itemId] {
+        if let current = live.current, shown(current.itemId), let q = itemPoints[current.itemId] {
             let (qp, qd) = project(q)
             let (ap, _) = project(answerPosition(current, near: q))
             let grown = min(1, Double(current.answer.count) / 160)
             let tip = CGPoint(x: qp.x + (ap.x - qp.x) * grown, y: qp.y + (ap.y - qp.y) * grown)
             stroke(&context, qp, tip, pendingColor.opacity(0.9), width: 1.6)
             let pulse = 0.5 + 0.5 * sin(t * 5)
-            glow(&context, qp, depth: qd, color: questionColor, radius: 4 + 3 * pulse, bright: 1.15)
+            glow(&context, qp, depth: qd, color: questionColor, radius: (4 + 3 * pulse) * dotScale, bright: 1.15)
         }
 
         // The questions themselves: dim until asked.
-        for item in items {
+        for item in items where shown(item.id) {
             guard let p = itemPoints[item.id] else { continue }
             let (sp, depth) = project(p)
             let lit = asked.contains(item.id)
-            glow(&context, sp, depth: depth, color: questionColor, radius: lit ? 3.2 : 1.6, bright: lit ? 1.15 : 0.45)
+            glow(&context, sp, depth: depth, color: questionColor, radius: (lit ? 3.2 : 1.6) * dotScale, bright: lit ? 1.15 : 0.45)
         }
 
         // The dot shown in the panel, ringed; an answer's question too.
-        if let picked, let q = itemPoints[picked.itemId] {
+        if let picked, shown(picked.itemId), let q = itemPoints[picked.itemId] {
             let (qp, _) = project(q)
             ring(&context, qp, color: questionColor, pulse: picked.exchangeKey == nil ? t : nil)
             if let key = picked.exchangeKey, let exchange = live.exchanges.last(where: { $0.key == key }), let a = placed.answer(exchange) {
@@ -349,31 +397,37 @@ struct ConnectionsView: View {
     /// The clusters' bars, the reported leans, and their words.
     private func drawFrame(_ clusters: ClusterLayout, _ context: inout GraphicsContext,
                            project: (Point3) -> (CGPoint, Double), opacity: Double) {
-        for bar in clusters.bars {
+        func inFocus(_ group: String) -> Bool { focus == nil || focus == group }
+        for bar in clusters.bars where inFocus(bar.group) {
             let (a, _) = project(bar.from), (b, _) = project(bar.to)
             stroke(&context, a, b, questionColor.opacity(0.6 * opacity), width: 1)
             let mid = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
             stroke(&context, CGPoint(x: mid.x, y: mid.y - 4), CGPoint(x: mid.x, y: mid.y + 4), questionColor.opacity(0.6 * opacity), width: 1)
         }
         // The lean the profile reports: a position, so a neutral light.
-        for tick in clusters.ticks {
-            let (p, _) = project(tick)
+        for tick in clusters.ticks where inFocus(tick.group) {
+            let (p, _) = project(tick.at)
             stroke(&context, CGPoint(x: p.x, y: p.y - 11), CGPoint(x: p.x, y: p.y + 11), Assessment.neutral.color.opacity(0.95 * opacity), width: 2)
         }
         context.blendMode = .normal
         let ink = questionColor.mix(with: .black, by: 0.15)
-        for label in clusters.labels {
+        // Titles stand out in near white (the palette's own text colour in
+        // Retro); the words beneath them stay quiet.
+        let titleInk = palette?.textColor ?? Color(white: 0.96)
+        for label in clusters.labels where inFocus(label.group) {
             let (p, _) = project(label.at)
-            context.draw(Text(label.text)
-                            .font(.system(size: label.size, weight: label.strong ? .semibold : .regular, design: .monospaced))
-                            .foregroundStyle(ink.opacity((label.strong ? 0.9 : 0.6) * opacity)),
-                         at: p, anchor: label.anchor)
+            let font = Font.system(size: label.size, weight: label.strong ? .semibold : .regular, design: .monospaced)
+            var text = Text(label.text).font(font).foregroundStyle((label.strong ? titleInk : ink.opacity(0.6)).opacity(opacity))
+            if label.strong, focus == label.group {
+                text = text + Text("   show all").font(.system(size: label.size - 1, design: .monospaced)).foregroundStyle(ink.opacity(0.75 * opacity))
+            }
+            context.draw(text, at: p, anchor: label.anchor)
         }
     }
 
     /// A ring round a picked dot, breathing when it is the one clicked.
     private func ring(_ context: inout GraphicsContext, _ p: CGPoint, color: Color, pulse t: Double?) {
-        let r = 9 + (t.map { 2 * sin($0 * 3) } ?? 0)
+        let r = 9 * dotScale + (t.map { 2 * sin($0 * 3) } ?? 0)
         context.stroke(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)),
                        with: .color(color.opacity(0.95)), lineWidth: 1.4)
     }

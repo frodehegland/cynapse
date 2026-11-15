@@ -42,14 +42,19 @@ struct ClusterLayout {
         let at: Point3
         let anchor: UnitPoint
         var size: CGFloat = 10
+        /// A title: clicking it shows its group alone.
         var strong = false
+        /// The title this label belongs under: an axis, or "other".
+        var group = ""
     }
 
     private(set) var items: [String: Point3] = [:]
     private(set) var labels: [Label] = []
-    private(set) var bars: [(from: Point3, to: Point3)] = []
+    private(set) var bars: [(from: Point3, to: Point3, group: String)] = []
     /// The reported lean on each axis that has one.
-    private(set) var ticks: [Point3] = []
+    private(set) var ticks: [(at: Point3, group: String)] = []
+    /// Each question's group: its axis, or "other" for every other question.
+    private(set) var groupOf: [String: String] = [:]
     /// Each axis's row, by question.
     private var rows: [String: Double] = [:]
     /// Each answer's own score along its axis, by outcome key.
@@ -81,17 +86,18 @@ struct ClusterLayout {
             let row = -0.52 + Double(index) * 0.18
             let name = axis.prefix(1).uppercased() + axis.dropFirst()
             let lean = live.profile?.lean.first { $0.axis == axis }
-            labels.append(Label(text: lean?.text ?? name, at: Point3(x: -Self.half, y: row - 0.07, z: 0), anchor: .bottomLeading, size: 11, strong: true))
+            labels.append(Label(text: lean?.text ?? name, at: Point3(x: -Self.half, y: row - 0.07, z: 0), anchor: .bottomLeading, size: 11, strong: true, group: axis))
             if let poles = bank.axes[axis] {
-                labels.append(Label(text: "← " + poles.negative, at: Point3(x: -Self.half, y: row + 0.014, z: 0), anchor: .topLeading))
-                labels.append(Label(text: poles.positive + " →", at: Point3(x: Self.half, y: row + 0.014, z: 0), anchor: .topTrailing))
+                labels.append(Label(text: "← " + poles.negative, at: Point3(x: -Self.half, y: row + 0.014, z: 0), anchor: .topLeading, group: axis))
+                labels.append(Label(text: poles.positive + " →", at: Point3(x: Self.half, y: row + 0.014, z: 0), anchor: .topTrailing, group: axis))
             }
-            bars.append((Point3(x: -Self.half, y: row, z: 0), Point3(x: Self.half, y: row, z: 0)))
-            if let value = lean?.value { ticks.append(Point3(x: value * Self.half, y: row, z: 0)) }
+            bars.append((Point3(x: -Self.half, y: row, z: 0), Point3(x: Self.half, y: row, z: 0), axis))
+            if let value = lean?.value { ticks.append((Point3(x: value * Self.half, y: row, z: 0), axis)) }
 
             var unstable = 0, apart = 0
             for item in bank.items where item.module == .values && item.axis == axis {
                 guard let outcome = plain[item.id] else { unplaced.append(item); continue }
+                groupOf[item.id] = axis
                 rows[item.id] = row
                 let u = { (salt: UInt64) in Scatter.unit(item.id, salt) }
                 let s = outcome.detail.wordingScores ?? []
@@ -107,8 +113,8 @@ struct ClusterLayout {
                     items[item.id] = Point3(x: max(-1, min(1, mean)) * Self.half, y: row + u(22) * 0.012, z: u(23) * 0.04)
                 }
             }
-            if unstable > 0 { labels.append(Label(text: "no stable position", at: Point3(x: 0.09, y: row - 0.04, z: 0), anchor: .leading, size: 9)) }
-            if apart > 0 { labels.append(Label(text: "declined, or asked to argue each side", at: Point3(x: -0.15, y: row + 0.055, z: 0), anchor: .leading, size: 9)) }
+            if unstable > 0 { labels.append(Label(text: "no stable position", at: Point3(x: 0.09, y: row - 0.04, z: 0), anchor: .leading, size: 9, group: axis)) }
+            if apart > 0 { labels.append(Label(text: "declined, or asked to argue each side", at: Point3(x: -0.15, y: row + 0.055, z: 0), anchor: .leading, size: 9, group: axis)) }
         }
 
         // Every other question, by how it rated.
@@ -129,15 +135,16 @@ struct ClusterLayout {
         for item in unplaced { add(item, to: "not asked") }
         let shown = groups.filter { !$0.items.isEmpty }
         let y = 0.36
-        labels.append(Label(text: "Every other question, by how it rated", at: Point3(x: -Self.half, y: y - 0.13, z: 0), anchor: .bottomLeading, size: 11, strong: true))
+        labels.append(Label(text: "Every other question, by how it rated", at: Point3(x: -Self.half, y: y - 0.13, z: 0), anchor: .bottomLeading, size: 11, strong: true, group: "other"))
         for (index, group) in shown.enumerated() {
             let x = shown.count == 1 ? 0 : -Self.half + Double(index) * (2 * Self.half) / Double(shown.count - 1)
             let r = min(0.1, 0.025 + 0.016 * Double(group.items.count).squareRoot())
             for item in group.items {
                 let u = { (salt: UInt64) in Scatter.unit(item.id, salt) }
                 items[item.id] = Point3(x: x + u(11) * r, y: y + u(12) * r, z: u(13) * r)
+                groupOf[item.id] = "other"
             }
-            labels.append(Label(text: "\(group.word) · \(group.items.count)", at: Point3(x: x, y: y + r + 0.025, z: 0), anchor: .top))
+            labels.append(Label(text: "\(group.word) · \(group.items.count)", at: Point3(x: x, y: y + r + 0.025, z: 0), anchor: .top, group: "other"))
         }
     }
 
