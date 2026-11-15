@@ -42,6 +42,8 @@ struct CynapseApp: App {
                 .environment(app)
         }
         .windowStyle(.hiddenTitleBar)
+        // Opened only when a check is run, never brought back at launch.
+        .restorationBehavior(.disabled)
 
         Window("The Questions", id: "questions") {
             QuestionsView()
