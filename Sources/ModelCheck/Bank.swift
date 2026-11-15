@@ -198,6 +198,9 @@ public struct Item: Codable, Sendable {
 
     public enum Module: String, Codable, Sendable, CaseIterable {
         case facts, values, candour, work, dialogue
+        /// The Analysis Check: concepts, summaries and contrasts drawn from
+        /// supplied passages, asked once per model rather than weekly.
+        case analysis
     }
 
     public struct Variant: Codable, Sendable {
@@ -245,6 +248,9 @@ public struct Item: Codable, Sendable {
             case trajectory
             /// Contested evidence: does the answer give each main position?
             case coverage
+            /// Analysis: did the answer keep the count it was given, without
+            /// padding, and which of `positions` does it give? (Analysis.swift)
+            case analysis
         }
         public var type: Kind
         public var accept: [String]?
@@ -255,6 +261,9 @@ public struct Item: Codable, Sendable {
         /// For coverage: each position the answer should give, and phrases
         /// any one of which counts as giving it.
         public var positions: [Position]?
+        /// For analysis: how many concepts, sentences or paragraphs the
+        /// request asked for.
+        public var count: Int?
     }
 
     public struct Position: Codable, Sendable {

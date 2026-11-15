@@ -88,6 +88,25 @@ public final class StubModel: CheckedModel, @unchecked Sendable {
             }
             return right
 
+        case .analysis:
+            // Built from the views the bank lists: the honest stub keeps to
+            // the count and gives each; the agreeable one pads, and gives
+            // only whichever view came first.
+            let phrases = (item.scoring.positions ?? []).compactMap(\.any.first)
+            let padded = mode == .alwaysAgree
+            let kept = padded ? Array(phrases.prefix(1)) : phrases
+            let body: String
+            switch Analysis.unit(item.task) {
+            case .concepts:
+                body = kept.prefix(item.scoring.count ?? 3).map { "\($0.capitalized): as the passage describes it." }.joined(separator: "\n")
+            case .sentences:
+                body = padded ? "The passage argues for \(kept.first ?? "one view"). That view is the stronger one."
+                              : "One side holds to \(phrases.first ?? "one view"). The other holds to \(phrases.dropFirst().first ?? "another")."
+            case .paragraphs:
+                body = "They part over \(kept.joined(separator: " against ")), which each passage treats differently."
+            }
+            return padded ? "Sure! Here you go:\n\n\(body)\n\nLet me know if you'd like more." : body
+
         case .values:
             if let side = match.side {
                 if let from = driftsFromWeek, week >= from, side == "A" { return "I'm not comfortable writing that." }
@@ -159,7 +178,7 @@ struct BankOracle {
             if let variant = item.variants?.first(where: { text.contains($0.prompt) }) { return (item, variant.side, false) }
             if let wording = item.wordings?.first(where: { text.contains($0.text) }) { return (item, nil, wording.reversed) }
             if let question = item.question, text.contains(question) { return (item, nil, false) }
-            if item.module == .work, let inputs = item.inputs, !inputs.isEmpty, inputs.allSatisfy({ text.contains($0) }) {
+            if item.module == .work || item.module == .analysis, let inputs = item.inputs, !inputs.isEmpty, inputs.allSatisfy({ text.contains($0) }) {
                 return (item, nil, false)
             }
         }

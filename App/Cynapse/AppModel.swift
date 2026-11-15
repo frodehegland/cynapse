@@ -24,6 +24,18 @@ final class AppModel {
     /// Questions with an AI…), unsigned and kept apart.
     var ownItems: [Item] = []
     var bankProblem: String?
+    /// The Analysis Check's passages, asked once per model; and whether
+    /// they are signed (a draft is run, and its profile says so).
+    var analysisBank: Bank?
+    var analysisSigned = false
+    /// The bank of the check the Live View is showing.
+    var liveBank: Bank?
+    /// Every question known, for opening the evidence behind any line.
+    var lookupBank: Bank? {
+        guard var all = bank else { return analysisBank }
+        all.items += analysisBank?.items ?? []
+        return all
+    }
 
     /// Whether checks ask the person's own questions too (weekly re-checks
     /// never do: they are measured against the signed set alone).
@@ -73,6 +85,36 @@ final class AppModel {
         }
         ownItems = OwnQuestionsStore.load()
         bank = signedBank?.adding(own: ownItems)
+        loadAnalysisBank()
+    }
+
+    /// The Analysis passages: verified when signed; a draft with no
+    /// signature yet is still run, marked unsigned; a bad signature is refused.
+    func loadAnalysisBank() {
+        guard let url = Bundle.main.url(forResource: "analysis-bank-v0.1", withExtension: "json") else { return }
+        if FileManager.default.fileExists(atPath: url.path + ".sig") {
+            analysisBank = try? BankSignature.loadVerified(url, publicKey: Self.bankPublicKey)
+            analysisSigned = analysisBank != nil
+        } else {
+            analysisBank = (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(Bank.self, from: $0) }
+            analysisSigned = false
+        }
+    }
+
+    /// The model's latest Analysis Check, if any.
+    func latestAnalysis(_ entry: ModelEntry) -> StoredProfile? {
+        profiles[entry.id]?.first { $0.profile.run.kind == .analysis }
+    }
+
+    /// Whether the model has changed since its Analysis Check: its files,
+    /// or for Apple's model, the version of macOS it comes with.
+    func analysisOutdated(_ entry: ModelEntry) -> Bool {
+        guard let then = latestAnalysis(entry)?.profile.model else { return false }
+        if let now = fingerprints[entry.id]?.hash, let was = then.sha256 { return now != was }
+        if case .apple = entry.kind, let model = try? ModelLibrary.model(for: entry, fingerprint: nil) {
+            return model.identity.runtime?.version != then.runtime?.version
+        }
+        return false
     }
 
     /// Keeps new questions of the person's own.
@@ -173,7 +215,10 @@ final class AppModel {
 
     func startCheck(_ entry: ModelEntry, mode: RunMode) {
         guard runningEntry == nil, let signedBank, let merged = bank else { return }
-        let bank = mode != .weekly && askOwnQuestions ? merged : signedBank
+        let analysing = mode == .analysis
+        guard !analysing || analysisBank != nil else { runProblem = "The Analysis passages are missing from the app, or their signature doesn't match."; return }
+        let bank = analysing ? analysisBank! : mode != .weekly && askOwnQuestions ? merged : signedBank
+        let unsigned = analysing && !analysisSigned
         runProblem = nil
         let model: any CheckedModel
         do {
@@ -183,13 +228,14 @@ final class AppModel {
             return
         }
         // A model whose files changed since its last check starts afresh.
-        let transcript = ProfileStore.currentTranscript(for: entry)
+        let transcript = ProfileStore.currentTranscript(for: entry, analysis: analysing)
         if let last = profiles[entry.id]?.first?.profile.model.sha256, let now = fingerprints[entry.id]?.hash, last != now {
             try? FileManager.default.removeItem(at: transcript)
         }
 
         runningEntry = entry.id
-        live.reset(bank: bank, verified: true)
+        liveBank = bank
+        live.reset(bank: bank, verified: !unsigned)
         let (stream, continuation) = AsyncStream<CheckEvent>.makeStream(bufferingPolicy: .unbounded)
 
         // Events reach the view in order, on the main actor.
@@ -205,16 +251,17 @@ final class AppModel {
                 await MainActor.run { self.live.setPlan(asks) }
             }
             do {
-                let profile = try await runner.check(mode)
+                var profile = try await runner.check(mode)
+                if unsigned { profile.bank.unsigned = true }
                 continuation.finish()
-                await MainActor.run {
-                    let stored = try? ProfileStore.save(profile, for: entry)
+                await MainActor.run { [profile] in
+                    let stored = try? ProfileStore.save(profile, for: entry, transcript: transcript)
                     self.profiles[entry.id] = self.filled(ProfileStore.profiles(for: entry))
                     if mode == .weekly, let stored {
                         WeeklyChecks.finished(stored, entry: entry, profiles: self.profiles[entry.id] ?? [], bank: bank)
                     }
                     self.runningEntry = nil
-                    if mode != .weekly, let stored { self.judge(stored, entry: entry) }
+                    if mode != .weekly, let stored { self.judge(stored, entry: entry, bank: bank) }
                 }
             } catch is CancellationError {
                 continuation.finish()
@@ -232,8 +279,7 @@ final class AppModel {
 
     /// The chosen judges read the answers a check can't score mechanically;
     /// their reports are added to the profile.
-    func judge(_ stored: StoredProfile, entry: ModelEntry) {
-        guard let bank else { return }
+    func judge(_ stored: StoredProfile, entry: ModelEntry, bank: Bank) {
         let judges = judgeIDs.compactMap { id in entries.first { $0.id == id && $0.id != entry.id } }
             .compactMap { try? ModelLibrary.model(for: $0, fingerprint: fingerprints[$0.id]) }
         guard !judges.isEmpty else { return }
@@ -260,9 +306,11 @@ final class AppModel {
     /// replayed from its transcript — real questions and answers, in order.
     func replayLatest() {
         guard runningEntry == nil, let bank, let entry = selected ?? entries.first,
-              let stored = profiles[entry.id]?.first(where: { $0.profile.run.kind != .weekly }) ?? profiles[entry.id]?.first else { return }
+              let stored = profiles[entry.id]?.first(where: { $0.profile.run.kind == .quick || $0.profile.run.kind == .full })
+                ?? profiles[entry.id]?.first(where: { $0.profile.run.kind != .analysis }) else { return }
         let records = ProfileStore.records(of: stored)
         guard !records.isEmpty else { return }
+        liveBank = bank
         live.reset(bank: bank, verified: true)
         live.setPlan(records.map(\.ask))
         live.apply(.started(model: stored.profile.model, bank: bank.bank, planned: records.count, mode: stored.profile.run.kind))

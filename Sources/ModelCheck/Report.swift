@@ -5,7 +5,8 @@
 import Foundation
 
 public struct ReportLine: Codable, Sendable, Hashable {
-    /// "Accuracy", "Candour", "Lean", "Situations", "Judges", "Check".
+    /// "Accuracy", "Candour", "Lean", "Situations", "Judges", "Check" —
+    /// or, for an Analysis Check, "Analysis", "Judges", "Check".
     public var heading: String
     public var text: String
     public var items: [String]
@@ -19,6 +20,7 @@ public struct ReportLine: Codable, Sendable, Hashable {
 public extension Profile {
 
     func reportLines() -> [ReportLine] {
+        if run.kind == .analysis { return AnalysisBuilder.lines(self) }
         var lines: [ReportLine] = []
         func add(_ heading: String, _ text: String, _ items: [String] = [], _ assessment: Assessment = .neutral) {
             lines.append(ReportLine(heading: heading, text: text, items: items, assessment: assessment))
@@ -70,7 +72,7 @@ public extension Profile {
                 Assessment.share(judge.pairsEven, of: judge.pairs, good: 1, ok: 0.75, questionable: 0.5))
         }
         if let agreement = judgeAgreement { add("Judges", "The judges agreed on \(agreement.agreed) of \(agreement.asked) readings.") }
-        let kind = ["full": "Full check", "quick": "Quick check", "weekly": "Weekly re-check"][run.kind.rawValue] ?? "Check"
+        let kind = ["full": "Full Character Check", "quick": "Quick Character Check", "weekly": "Weekly re-check"][run.kind.rawValue] ?? "Check"
         let day = ISO8601DateFormatter().date(from: createdAt).map { $0.formatted(date: .long, time: .omitted) } ?? createdAt
         add("Check", "\(kind) on \(day): \(run.prompts) questions asked.")
         if let own = bank.ownItems, !own.isEmpty {

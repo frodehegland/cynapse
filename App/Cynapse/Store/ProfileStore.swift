@@ -38,8 +38,10 @@ enum ProfileStore {
         return url
     }
 
-    static func currentTranscript(for entry: ModelEntry) -> URL {
-        folder(for: entry).appendingPathComponent("current.transcript.jsonl")
+    /// The run in progress; an Analysis Check resumes from its own, so the
+    /// two kinds of check never mix their answers.
+    static func currentTranscript(for entry: ModelEntry, analysis: Bool = false) -> URL {
+        folder(for: entry).appendingPathComponent(analysis ? "current-analysis.transcript.jsonl" : "current.transcript.jsonl")
     }
 
     /// All of a model's profiles, newest first.
@@ -55,22 +57,24 @@ enum ProfileStore {
 
     /// Saves a finished run: the profile, and the transcript moved beside it.
     @discardableResult
-    static func save(_ incoming: Profile, for entry: ModelEntry) throws -> StoredProfile {
+    static func save(_ incoming: Profile, for entry: ModelEntry, transcript current: URL? = nil) throws -> StoredProfile {
         var profile = incoming
         profile.report = profile.reportLines().map { "\($0.heading): \($0.text)" }
         let stamp = profile.createdAt.replacingOccurrences(of: ":", with: "-")
         let url = folder(for: entry).appendingPathComponent("\(stamp).modelcheck.json")
         try profile.jsonData().write(to: url)
         let stored = StoredProfile(url: url, profile: profile)
-        let current = currentTranscript(for: entry)
+        let current = current ?? currentTranscript(for: entry)
         if FileManager.default.fileExists(atPath: current.path) {
             try? FileManager.default.moveItem(at: current, to: stored.transcriptURL)
         }
         if let shared = ModelLibrary.sharedProfilesFolder {
             try? FileManager.default.createDirectory(at: shared, withIntermediateDirectories: true)
             // Named by the model's name ("org--name"), the name Author and
-            // Knowledge Space know it by.
-            try? profile.jsonData().write(to: shared.appendingPathComponent("\(sharedName(entry)).modelcheck.json"))
+            // Knowledge Space know it by. An Analysis Check has its own file
+            // beside it, so it never replaces the Character Check.
+            let suffix = profile.run.kind == .analysis ? "analysis" : "modelcheck"
+            try? profile.jsonData().write(to: shared.appendingPathComponent("\(sharedName(entry)).\(suffix).json"))
         }
         return stored
     }

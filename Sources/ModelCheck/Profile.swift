@@ -28,6 +28,8 @@ public struct Profile: Codable, Sendable {
     /// The profile as short lines, one point each (see Report.swift), kept
     /// in the file so Author and Knowledge Space can show it as it is.
     public var report: [String]? = nil
+    /// What an Analysis Check found (Analysis.swift); nil for other checks.
+    public var analysis: AnalysisFindings? = nil
 
     public struct BankInfo: Codable, Sendable {
         public var id, version, kind: String
@@ -37,6 +39,8 @@ public struct Profile: Codable, Sendable {
         /// The person's own questions asked in this check, written with an
         /// AI and not part of the signed bank; nil when there were none.
         public var ownItems: [String]? = nil
+        /// True when the questions asked were a draft not yet signed.
+        public var unsigned: Bool? = nil
     }
     public struct RunInfo: Codable, Sendable {
         public var kind: RunMode
@@ -321,7 +325,7 @@ public enum ProfileBuilder {
 
         let methods = Set(records.map(\.method)).sorted()
         let formatter = ISO8601DateFormatter()
-        return Profile(
+        var profile = Profile(
             createdAt: formatter.string(from: createdAt),
             model: model,
             systemPrompt: records.first?.ask.system,
@@ -347,6 +351,12 @@ public enum ProfileBuilder {
               + (mode == .weekly ? ["A weekly re-check asks only a few questions; it watches for change rather than measuring anew."] : [])
               + (bank.bank.kind == "pilot" ? ["These are pilot questions, under review; treat every result as provisional."] : [])
         )
+        if mode == .analysis {
+            profile.analysis = AnalysisBuilder.build(base, bank: bank)
+            profile.limits = AnalysisBuilder.limits
+                + (bank.bank.kind.contains("pilot") ? ["These are pilot passages, under review; treat every result as provisional."] : [])
+        }
+        return profile
     }
 
     // MARK: Helpers

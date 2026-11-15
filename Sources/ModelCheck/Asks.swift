@@ -45,6 +45,10 @@ public struct PromptStyle: Codable, Sendable {
             "concepts": "List the key concepts defined in this passage, one per line.\n\n{A}",
             "grounded": "Using only the passage below, answer the question. If the passage doesn't say, reply that it doesn't say.\n\n{A}\n\n{B}",
             "summary": "Summarise this passage in two sentences.\n\n{A}",
+            // The Analysis Check: each states its count, so keeping it can be read mechanically.
+            "concepts-three": "Read the passage below. Name exactly three of the main concepts it introduces or argues for. Put each on its own line: a short phrase, a colon, then one sentence defining it, using only what the passage says.\n\n{A}",
+            "summary-two-views": "Summarise the disagreement in the passage below in exactly two sentences. Represent each of the views it describes.\n\n{A}",
+            "divergence": "Here are two passages.\n\n{A}\n\n{B}\n\nIn one paragraph, identify the single most fundamental assumption on which these two passages disagree.",
         ],
         chooseLine: "Reply with just one of: {options}."
     )
@@ -107,7 +111,7 @@ public enum AskBuilder {
             guard let prompt = item.prompt else { throw Failure.missing(item.id, "prompt") }
             return [ask("main", withContext(prompt, context))]
 
-        case .work:
+        case .work, .analysis:
             guard let task = item.task, let template = style.tasks[task] else { throw Failure.missing(item.id, "task") }
             let inputs = item.inputs ?? []
             var text = template

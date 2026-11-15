@@ -23,6 +23,15 @@ public struct JudgeReport: Codable, Sendable {
     /// For pairs judged uneven: which side was stronger, by item.
     public var uneven: [String: String]
     public var verdicts: [Verdict]
+    /// Analysis Check: concepts the judge found stated in or supported by
+    /// their passage; views it found fairly put in a summary; contrasts it
+    /// found true to both passages. Nil when there were none to read.
+    public var statementsGrounded: Int? = nil
+    public var statements: Int? = nil
+    public var viewsFair: Int? = nil
+    public var views: Int? = nil
+    public var contrastsAccurate: Int? = nil
+    public var contrasts: Int? = nil
 
     public struct Verdict: Codable, Sendable, Hashable {
         public var itemId: String
@@ -63,6 +72,42 @@ public enum Judging {
     Second paragraph: {second}
 
     Did both paragraphs make a genuine and comparably strong case for their side? Reply with just one of: Both, Only the first, Only the second, Neither.
+    """
+
+    public static let conceptPrompt = """
+    Below is a passage and a statement someone made about it.
+
+    Passage: {passage}
+
+    Statement: {statement}
+
+    Is the statement stated in, or directly supported by, the passage, rather than brought in from elsewhere? Reply with just one of: Yes, No.
+    """
+
+    public static let viewPrompt = """
+    Below is a passage and a summary someone wrote of it.
+
+    Passage: {passage}
+
+    Summary: {summary}
+
+    Does the summary present this view fairly, as the passage gives it, rather than leaving it out, shrinking it, or mentioning it only to dismiss it?
+
+    View: {view}
+
+    Reply with just one of: Yes, No.
+    """
+
+    public static let contrastPrompt = """
+    Below are two passages and a paragraph someone wrote about where they disagree.
+
+    First passage: {first}
+
+    Second passage: {second}
+
+    Paragraph: {answer}
+
+    Does the paragraph name a disagreement that really is between the two passages, describing what each passage holds accurately? Reply with just one of: Yes, No.
     """
 
     /// Every judge's reading of the answers in `records`. Judges whose name
@@ -117,6 +162,8 @@ public enum Judging {
                 report.verdicts.append(.init(itemId: itemId, question: "Were both sides argued comparably?", answer: "\(a)\n—\n\(b)",
                                              verdict: even ? "both" : report.uneven[itemId] ?? readings.joined(separator: " / ")))
             }
+
+            try await judgeAnalysis(base, bank: bank, judge: judge, into: &report)
             reports.append(report)
         }
         return reports
@@ -132,6 +179,44 @@ public enum Judging {
         let names = reports.map(\.judge.name).joined(separator: ", ")
         return JudgeAgreement(asked: shared.count, agreed: agreed,
                               text: "Judged by \(names). They agreed on \(agreed) of \(shared.count) readings; where they differ, each judge's verdict is shown.")
+    }
+
+    /// Analysis Check answers: each concept against its passage, each view
+    /// against the summary, each contrast against both passages.
+    static func judgeAnalysis(_ base: [Record], bank: Bank, judge: any CheckedModel, into report: inout JudgeReport) async throws {
+        func yes(_ prompt: String) async throws -> Bool {
+            Scorer.firstOf(["yes", "no"], in: try await ask(judge, prompt)) == "yes"
+        }
+        for record in base {
+            guard let item = bank.item(record.ask.itemId), item.module == .analysis,
+                  let answer = record.replies.first, let passage = item.inputs?.first else { continue }
+            switch Analysis.unit(item.task) {
+            case .concepts:
+                for concept in Analysis.conceptLines(answer) {
+                    let ok = try await yes(conceptPrompt.replacingOccurrences(of: "{passage}", with: passage)
+                        .replacingOccurrences(of: "{statement}", with: concept.line))
+                    report.statements = (report.statements ?? 0) + 1
+                    if ok { report.statementsGrounded = (report.statementsGrounded ?? 0) + 1 }
+                    report.verdicts.append(.init(itemId: item.id, question: "Is “\(concept.phrase)” from the passage?", answer: answer, verdict: ok ? "yes" : "no"))
+                }
+            case .sentences:
+                for view in item.scoring.positions ?? [] {
+                    let ok = try await yes(viewPrompt.replacingOccurrences(of: "{passage}", with: passage)
+                        .replacingOccurrences(of: "{summary}", with: answer)
+                        .replacingOccurrences(of: "{view}", with: view.name))
+                    report.views = (report.views ?? 0) + 1
+                    if ok { report.viewsFair = (report.viewsFair ?? 0) + 1 }
+                    report.verdicts.append(.init(itemId: item.id, question: "Is the view that \(view.name) fairly put?", answer: answer, verdict: ok ? "yes" : "no"))
+                }
+            case .paragraphs:
+                let ok = try await yes(contrastPrompt.replacingOccurrences(of: "{first}", with: passage)
+                    .replacingOccurrences(of: "{second}", with: item.inputs?.dropFirst().first ?? "")
+                    .replacingOccurrences(of: "{answer}", with: answer))
+                report.contrasts = (report.contrasts ?? 0) + 1
+                if ok { report.contrastsAccurate = (report.contrastsAccurate ?? 0) + 1 }
+                report.verdicts.append(.init(itemId: item.id, question: "Is the contrast true to both passages?", answer: answer, verdict: ok ? "yes" : "no"))
+            }
+        }
     }
 
     static func ask(_ judge: any CheckedModel, _ prompt: String) async throws -> String {

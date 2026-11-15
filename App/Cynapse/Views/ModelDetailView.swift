@@ -11,9 +11,9 @@ struct ModelDetailView: View {
     @State private var evidence: Evidence?
 
     var body: some View {
-        // The card keeps the last full or quick check; weekly re-checks are
-        // listed in History.
-        let all = app.profiles[entry.id] ?? []
+        // The card keeps the last full or quick Character Check; weekly
+        // re-checks are listed in History. The Analysis Check has its own section.
+        let all = (app.profiles[entry.id] ?? []).filter { $0.profile.run.kind != .analysis }
         let stored = shown ?? all.first { $0.profile.run.kind != .weekly } ?? all.first
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -27,12 +27,15 @@ struct ModelDetailView: View {
                     ProfileCardView(profile: stored.profile, status: app.status(of: entry)) { ids, title in
                         evidence = Evidence(title: title, ids: ids, stored: stored)
                     }
-                    ProfileDetailView(stored: stored, history: app.profiles[entry.id] ?? [], shown: $shown) { ids, title in
+                } else if app.runningEntry != entry.id {
+                    Text("No Character Check yet. A quick check takes a few minutes on a downloaded model; the full check runs for longer, and can be stopped and carried on.")
+                        .foregroundStyle(.secondary)
+                }
+                analysisSection
+                if let stored {
+                    ProfileDetailView(stored: stored, history: all, shown: $shown) { ids, title in
                         evidence = Evidence(title: title, ids: ids, stored: stored)
                     }
-                } else if app.runningEntry != entry.id {
-                    Text("Not checked yet. A quick check takes a few minutes on a downloaded model; the full check runs for longer, and can be stopped and carried on.")
-                        .foregroundStyle(.secondary)
                 }
             }
             .padding(28)
@@ -55,14 +58,39 @@ struct ModelDetailView: View {
             Text(entry.name).font(.largeTitle.weight(.semibold))
             Text(subtitle).foregroundStyle(.secondary).textSelection(.enabled)
             HStack {
-                Button("Quick Check") { app.startCheck(entry, mode: .quick); openLive() }
+                Text("Character Check").foregroundStyle(.secondary)
+                Button("Quick") { app.startCheck(entry, mode: .quick); openLive() }
                     .keyboardShortcut("r")
-                Button("Full Check") { app.startCheck(entry, mode: .full); openLive() }
+                    .help("A quick Character Check: accuracy, candour, lean and consistency")
+                Button("Full") { app.startCheck(entry, mode: .full); openLive() }
+                    .help("The full Character Check, under every situation the questions list")
+                Divider().frame(height: 16).padding(.horizontal, 6)
+                Text("Analysis Check").foregroundStyle(.secondary)
+                Button(app.latestAnalysis(entry) == nil ? "Run" : "Run Again") { app.startCheck(entry, mode: .analysis); openLive() }
+                    .disabled(app.analysisBank == nil)
+                    .help("Concepts, summaries and contrasts drawn from short passages; asked once per model")
+                Spacer()
                 Button("Live View") { openLive() }
                     .disabled(app.runningEntry == nil && app.live.profile == nil)
             }
             .disabled(app.bank == nil)
             .disabled(app.runningEntry != nil && app.runningEntry != entry.id)
+        }
+    }
+
+    /// The Analysis Check: asked once, since a model's files don't change;
+    /// shown as outdated if they (or macOS, for Apple's model) have.
+    @ViewBuilder private var analysisSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Analysis Check").font(.title3.weight(.semibold))
+            if let analysis = app.latestAnalysis(entry) {
+                ProfileCardView(profile: analysis.profile, status: app.analysisOutdated(entry) ? "changed" : "checked") { ids, title in
+                    evidence = Evidence(title: title, ids: ids, stored: analysis)
+                }
+            } else if !(app.runningEntry == entry.id && app.live.mode == .analysis) {
+                Text("Not run yet. The model is given nine short passages to draw concepts from, summarise, and compare. A model's files don't change, so this is asked once, not weekly.")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

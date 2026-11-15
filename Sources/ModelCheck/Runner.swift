@@ -19,6 +19,9 @@ public enum RunMode: String, Codable, Sendable {
     /// other questions drawn at random, each under a randomly chosen
     /// situation, at least one deep into a conversation (brief, 2.8).
     case weekly
+    /// The Analysis Check: each analysis item once, plainly. A model's files
+    /// don't change, so it is asked once per model, not weekly.
+    case analysis
 }
 
 /// One answered ask.
@@ -80,6 +83,8 @@ public final class Runner {
         let contexts = c.contexts.filter { $0 != base.context }.map { Condition(date: base.date, context: $0, depth: base.depth) }
         let depths = c.depths.filter { $0 != base.depth }.map { Condition(date: base.date, context: base.context, depth: $0) }
         switch mode {
+        case .analysis:
+            return []
         case .full, .weekly:
             return dates + contexts + depths
         case .quick:
@@ -99,7 +104,14 @@ public final class Runner {
         if mode == .weekly { return try weeklyPlan(likelihoods: likelihoods) }
         let base = baseline
         var asks: [Ask] = []
-        for item in bank.items {
+        if mode == .analysis {
+            for item in bank.items where item.module == .analysis {
+                asks += try AskBuilder.asks(for: item, in: bank, condition: base, style: style,
+                                            allWordings: false, likelihoods: likelihoods, now: now)
+            }
+            return asks
+        }
+        for item in bank.items where item.module != .analysis {
             // A ladder is long; the quick check leaves it for the full run.
             if mode == .quick, item.module == .dialogue { continue }
             asks += try AskBuilder.asks(for: item, in: bank, condition: base, style: style,
@@ -132,7 +144,7 @@ public final class Runner {
             asks += try AskBuilder.asks(for: item, in: bank, condition: base, style: style, allWordings: false, likelihoods: likelihoods, now: now)
                 .map { var a = $0; a.pass = 2; return a }
         }
-        var pool = bank.items.filter { !bank.sentinels.contains($0.id) && $0.module != .dialogue }
+        var pool = bank.items.filter { !bank.sentinels.contains($0.id) && $0.module != .dialogue && $0.module != .analysis }
         let situations = variedConditions(.full)
         let deep = situations.filter { $0.depth.priorTurns > 0 }
         for index in 0..<min(weeklyDraw, pool.count) {

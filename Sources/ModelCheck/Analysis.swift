@@ -122,15 +122,20 @@ public enum Analysis {
                                          "where", "they", "them", "than", "then", "have", "been", "being", "were", "will",
                                          "about", "over", "only", "also", "more", "most", "such", "each", "other", "these", "those"]
 
-    /// Whether any of a concept phrase's own words (four letters or more,
-    /// matched on their first five) is in the passage. Only a phrase with
-    /// none is counted: a paraphrase is not an invention.
+    /// Whether any of a concept phrase's own words (four letters or more) is
+    /// in the passage, two words matching when they start alike for five
+    /// letters, or for all of the shorter ("fold", "folded"). Only a phrase
+    /// with none is counted: a paraphrase is not an invention.
     public static func grounded(_ phrase: String, in passage: String) -> Bool {
-        func stem(_ w: Substring) -> String { String(w.prefix(5)) }
-        let source = Set(Scorer.normalise(passage).split(separator: " ").map(stem))
+        let source = Set(Scorer.normalise(passage).split(separator: " ").filter { $0.count >= 4 })
         let words = Scorer.normalise(phrase).split(separator: " ").filter { $0.count >= 4 && !stopWords.contains(String($0)) }
         guard !words.isEmpty else { return true }
-        return words.contains { source.contains(stem($0)) }
+        return words.contains { w in
+            source.contains { s in
+                let n = min(5, w.count, s.count)
+                return String(w.prefix(n)) == String(s.prefix(n))
+            }
+        }
     }
 
     // MARK: Scoring one answer
@@ -183,14 +188,14 @@ public enum Analysis {
 public extension Profile {
     /// What an Analysis Check found. Counts, never a score.
     struct AnalysisFindings: Codable, Sendable {
-        public var tasks: [Task]
+        public var tasks: [Part]
         /// Answers that opened or closed with chatter, of all answers.
         public var padded: Int
         public var answers: Int
         /// Views summaries left out: by the view, or by its place in the passage.
         public var dropped: [Dropped]
 
-        public struct Task: Codable, Sendable {
+        public struct Part: Codable, Sendable {
             public var task: String
             public var items: Int
             public var countKept: Int
@@ -222,7 +227,7 @@ public enum AnalysisBuilder {
         let byItem = Dictionary(base.map { ($0.itemId, $0) }, uniquingKeysWith: { a, _ in a })
         let order = ["concepts-three", "summary-two-views", "divergence"]
         let taskNames = Set(items.compactMap(\.task)).sorted { (order.firstIndex(of: $0) ?? 9, $0) < (order.firstIndex(of: $1) ?? 9, $1) }
-        let tasks: [Profile.AnalysisFindings.Task] = taskNames.map { task in
+        let tasks: [Profile.AnalysisFindings.Part] = taskNames.map { task in
             let mine = items.filter { $0.task == task && byItem[$0.id] != nil }
             let details = mine.compactMap { byItem[$0.id]?.detail }
             return .init(task: task, items: mine.count,
@@ -284,13 +289,15 @@ public enum AnalysisBuilder {
                 Assessment.share(t.countKept, of: t.items, good: 1, ok: 0.75, questionable: 0.5))
             switch Analysis.unit(t.task) {
             case .concepts:
+                add("\(name): named \(t.positionsGiven) of the \(t.positions) main concepts the passages introduce.", t.itemIds,
+                    Assessment.share(t.positionsGiven, of: t.positions, good: 0.85, ok: 0.65, questionable: 0.4))
                 add("\(name): \(t.ungrounded) of \(t.concepts) named had none of their words in the passage.", t.itemIds,
                     Assessment.none(t.ungrounded, of: t.concepts))
             case .sentences:
                 add("\(name): gave \(t.positionsGiven) of the \(t.positions) views the passages hold.", t.itemIds,
                     max(Assessment.share(t.positionsGiven, of: t.positions, good: 1, ok: 0.85, questionable: 0.6), .questionable))
             case .paragraphs:
-                add("\(name): named the disagreement the passages were written around in \(t.positionsGiven) of \(t.positions).", t.itemIds,
+                add("\(name): gave \(t.positionsGiven) of the \(t.positions) sides of the disagreements the passages were written around.", t.itemIds,
                     max(Assessment.share(t.positionsGiven, of: t.positions, good: 1, ok: 0.6, questionable: 0.3), .questionable))
             }
         }

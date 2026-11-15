@@ -1,0 +1,369 @@
+{
+  "bank": {
+    "id": "cynapse-analysis",
+    "version": "0.1.0-draft",
+    "released": "",
+    "kind": "pilot-analysis"
+  },
+  "sentinels": [],
+  "items": [
+    {
+      "id": "anal-0001",
+      "module": "analysis",
+      "task": "concepts-three",
+      "inputs": [
+        "A reader who follows references through a library leaves no mark of the path taken. The archive proposed here keeps that path. Every move from one document to another is stored as a trail, which can be named, shared and walked again by someone else. Alongside each document sits a margin of record: a space, separate from the text itself, where every reader's notes are kept with their date and author, so that the document is never altered but its reception grows. Finally, two readers may open the same trail at once in what the proposal calls joint reading, each seeing where the other has paused and what they have marked. The proposal argues that these three together turn a collection of documents from a store into a workplace, because the work of understanding is kept rather than lost when the reader closes the book."
+      ],
+      "scoring": {
+        "type": "analysis",
+        "count": 3,
+        "positions": [
+          {
+            "name": "the trail",
+            "any": [
+              "trail",
+              "trails"
+            ]
+          },
+          {
+            "name": "the margin of record",
+            "any": [
+              "margin of record",
+              "margin"
+            ]
+          },
+          {
+            "name": "joint reading",
+            "any": [
+              "joint reading"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0002",
+      "module": "analysis",
+      "task": "concepts-three",
+      "inputs": [
+        "The writing system described in these notes treats a document not as a single flow of prose but as a set of claims. Each unit of claim is a sentence or two that can stand alone, carry its own sources, and be quoted elsewhere without losing them. Where one claim rests on another, the dependency is drawn as a visible line, so a reader can see at a glance what would fall if a claim were withdrawn. The author does not publish everything at once. Under staged release, claims are made public in an order the author chooses, each stage dated, so a reader can see how the argument was built and when each part was added. The notes admit the cost: writers must decide where one claim ends and the next begins, which ordinary prose lets them leave vague."
+      ],
+      "scoring": {
+        "type": "analysis",
+        "count": 3,
+        "positions": [
+          {
+            "name": "the unit of claim",
+            "any": [
+              "unit of claim",
+              "units of claim"
+            ]
+          },
+          {
+            "name": "visible dependency",
+            "any": [
+              "dependency",
+              "dependencies"
+            ]
+          },
+          {
+            "name": "staged release",
+            "any": [
+              "staged release"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0003",
+      "module": "analysis",
+      "task": "concepts-three",
+      "inputs": [
+        "In the spatial workspace the essay describes, nothing has a fixed place on a page. Documents are arranged by the reader, and those placed near one another form a neighbourhood: the system treats closeness as a statement that the reader thinks they belong together, and offers to keep them together when the workspace is reopened. A long document can be folded, so that only its headings or a single chosen passage stay in view while the rest waits, unfolded with one gesture. Over time the workspace records a weight of attention for each document, a measure of how long and how often it has been read, and lets the reader dim whatever has gone untouched. The essay's claim is modest: that arrangement is itself a kind of thinking, and a tool that forgets the arrangement forgets part of the thought."
+      ],
+      "scoring": {
+        "type": "analysis",
+        "count": 3,
+        "positions": [
+          {
+            "name": "the neighbourhood",
+            "any": [
+              "neighbourhood",
+              "neighborhood"
+            ]
+          },
+          {
+            "name": "folding",
+            "any": [
+              "fold",
+              "folding",
+              "folded"
+            ]
+          },
+          {
+            "name": "the weight of attention",
+            "any": [
+              "weight of attention"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0004",
+      "module": "analysis",
+      "task": "summary-two-views",
+      "inputs": [
+        "Those who design digital documents disagree about what the page is for. One side holds that a document should keep the fixed page: the same lines in the same places for every reader, so that a passage can be cited by its location, printed without change, and trusted to be what its author approved. On this view, a stable layout is not a leftover from paper but the ground on which shared reference rests. The other side holds that the page should give way to a living text, reshaped for each reader and task: expanded or folded, rearranged by topic, joined to its sources, and recomputed when those sources change. On this view, fixing the layout throws away most of what a computer can do with words, and keeps only what paper could already do."
+      ],
+      "mirrorOf": "anal-0005",
+      "scoring": {
+        "type": "analysis",
+        "count": 2,
+        "positions": [
+          {
+            "name": "documents should keep a fixed, stable page",
+            "any": [
+              "fixed page",
+              "fixed layout",
+              "fixed form",
+              "stable layout",
+              "stable page",
+              "stability",
+              "stable",
+              "fixed"
+            ]
+          },
+          {
+            "name": "documents should become a living text, reshaped for each reader",
+            "any": [
+              "living text",
+              "reshaped",
+              "reshape",
+              "reshaping",
+              "rearranged",
+              "rearrange",
+              "dynamic",
+              "adapt",
+              "adapted",
+              "adaptable",
+              "fluid",
+              "flexible"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0005",
+      "module": "analysis",
+      "task": "summary-two-views",
+      "inputs": [
+        "Those who design digital documents disagree about what the page is for. One side holds that the page should give way to a living text, reshaped for each reader and task: expanded or folded, rearranged by topic, joined to its sources, and recomputed when those sources change. On this view, fixing the layout throws away most of what a computer can do with words, and keeps only what paper could already do. The other side holds that a document should keep the fixed page: the same lines in the same places for every reader, so that a passage can be cited by its location, printed without change, and trusted to be what its author approved. On this view, a stable layout is not a leftover from paper but the ground on which shared reference rests."
+      ],
+      "mirrorOf": "anal-0004",
+      "scoring": {
+        "type": "analysis",
+        "count": 2,
+        "positions": [
+          {
+            "name": "documents should become a living text, reshaped for each reader",
+            "any": [
+              "living text",
+              "reshaped",
+              "reshape",
+              "reshaping",
+              "rearranged",
+              "rearrange",
+              "dynamic",
+              "adapt",
+              "adapted",
+              "adaptable",
+              "fluid",
+              "flexible"
+            ]
+          },
+          {
+            "name": "documents should keep a fixed, stable page",
+            "any": [
+              "fixed page",
+              "fixed layout",
+              "fixed form",
+              "stable layout",
+              "stable page",
+              "stability",
+              "stable",
+              "fixed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0006",
+      "module": "analysis",
+      "task": "summary-two-views",
+      "inputs": [
+        "Builders of linked writing have long argued over who should make the links. One camp says links belong to the author: each one is a considered claim that two passages bear on each other, chosen with care, so a reader can trust that following it is worth the time. Links added by anyone, this camp warns, soon bury the few good connections under many careless ones. The other camp says links belong to readers: whoever notices a connection should be able to record it, keep it, and share it, because the author cannot foresee every use the text will be put to, and the most valuable connections are often the ones the author never saw."
+      ],
+      "mirrorOf": "anal-0007",
+      "scoring": {
+        "type": "analysis",
+        "count": 2,
+        "positions": [
+          {
+            "name": "links should be made by the author",
+            "any": [
+              "belong to the author",
+              "made by the author",
+              "by the author",
+              "authors",
+              "author's",
+              "authorial",
+              "curated",
+              "considered"
+            ]
+          },
+          {
+            "name": "links should be made by readers",
+            "any": [
+              "belong to readers",
+              "made by readers",
+              "by readers",
+              "readers",
+              "anyone",
+              "reader-made",
+              "users"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0007",
+      "module": "analysis",
+      "task": "summary-two-views",
+      "inputs": [
+        "Builders of linked writing have long argued over who should make the links. One camp says links belong to readers: whoever notices a connection should be able to record it, keep it, and share it, because the author cannot foresee every use the text will be put to, and the most valuable connections are often the ones the author never saw. The other camp says links belong to the author: each one is a considered claim that two passages bear on each other, chosen with care, so a reader can trust that following it is worth the time. Links added by anyone, this camp warns, soon bury the few good connections under many careless ones."
+      ],
+      "mirrorOf": "anal-0006",
+      "scoring": {
+        "type": "analysis",
+        "count": 2,
+        "positions": [
+          {
+            "name": "links should be made by readers",
+            "any": [
+              "belong to readers",
+              "made by readers",
+              "by readers",
+              "readers",
+              "anyone",
+              "reader-made",
+              "users"
+            ]
+          },
+          {
+            "name": "links should be made by the author",
+            "any": [
+              "belong to the author",
+              "made by the author",
+              "by the author",
+              "authors",
+              "author's",
+              "authorial",
+              "curated",
+              "considered"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0008",
+      "module": "analysis",
+      "task": "divergence",
+      "inputs": [
+        "A published text should be finished. Once the author releases it, its words and their order are settled, and every copy matches every other. This is what lets a reader in one city and a reader in another discuss the same sentence, and what lets a later reader find exactly what an earlier one quoted. Corrections are made in a new edition, clearly marked, never by quietly changing the old.",
+        "A published text should stay open. Its words are bound to the sources, data and other texts they rely on, and when those change, the text can show it: a figure updates, a claim gains a note, a reference points to its newer version. Readers see the text as it now stands, with its history available beneath. Freezing it at release would preserve its errors as faithfully as its insights."
+      ],
+      "scoring": {
+        "type": "analysis",
+        "count": 1,
+        "positions": [
+          {
+            "name": "a published text should be finished and fixed",
+            "any": [
+              "finished",
+              "fixed",
+              "settled",
+              "permanent",
+              "permanence",
+              "frozen",
+              "stable",
+              "stability",
+              "immutable",
+              "final"
+            ]
+          },
+          {
+            "name": "a published text should stay open to change",
+            "any": [
+              "stay open",
+              "stays open",
+              "open",
+              "update",
+              "updates",
+              "updated",
+              "updating",
+              "evolve",
+              "evolving",
+              "living",
+              "revise",
+              "changing"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "anal-0009",
+      "module": "analysis",
+      "task": "divergence",
+      "inputs": [
+        "What a reader sees is the document. The width of a column, the weight of a heading, the space before a quotation: these are decisions the writer and designer made, and they carry meaning as surely as the words do. Two renderings that lay the same words out differently are, in a real sense, two different documents, and a system that discards the layout to keep only the text has kept less than it thinks.",
+        "What a reader sees is only one view of the document. Underneath is its structure: which parts are claims, which are sources, which are examples, how they connect, and who wrote each. Keep that structure, and any number of layouts can be drawn from it, each suited to a different reader, screen or purpose. The layout is a rendering, to be discarded and redrawn; the structure is what must be preserved."
+      ],
+      "scoring": {
+        "type": "analysis",
+        "count": 1,
+        "positions": [
+          {
+            "name": "the document is its visible layout",
+            "any": [
+              "layout",
+              "visible form",
+              "appearance",
+              "presentation",
+              "typography",
+              "design",
+              "form"
+            ]
+          },
+          {
+            "name": "the document is its underlying structure",
+            "any": [
+              "structure",
+              "structural",
+              "underlying",
+              "metadata",
+              "data",
+              "semantic"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

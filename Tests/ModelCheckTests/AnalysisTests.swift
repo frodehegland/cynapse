@@ -66,6 +66,14 @@ func analysisProfile(_ behaviour: StubBehaviour) async throws -> Profile {
         #expect(PromptLint.problems(in: asks).isEmpty)
     }
 
+    /// The app carries its own copy of the passages; the two must not drift.
+    @Test func theAppsCopyOfThePassagesMatchesTheRepository() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let repo = try Data(contentsOf: root.appendingPathComponent("Bank/analysis/analysis-bank-v0.1.json"))
+        let app = try Data(contentsOf: root.appendingPathComponent("App/Cynapse/Resources/analysis-bank-v0.1.json"))
+        #expect(repo == app)
+    }
+
     @Test func analysisItemsStayOutOfOtherChecks() throws {
         var bank = try fixtureBank()
         bank.items += try analysisBank().items

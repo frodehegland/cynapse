@@ -47,7 +47,7 @@ struct LiveView: View {
         ZStack {
             // The network glows: it needs the dark.
             Color.black.ignoresSafeArea()
-            ConnectionsView(live: live, bank: app.bank, palette: retroPalette, picked: picked) { pick in
+            ConnectionsView(live: live, bank: app.liveBank ?? app.bank, palette: retroPalette, picked: picked) { pick in
                 evidence = nil
                 picked = pick
             }
@@ -98,7 +98,7 @@ struct LiveView: View {
                                         set: { if !$0 { evidence = nil; picked = nil } })) {
             Group {
                 if let picked {
-                    ConnectionPanel(pick: picked, live: live, bank: app.bank, privacy: privacy) { self.picked = nil }
+                    ConnectionPanel(pick: picked, live: live, bank: app.liveBank ?? app.bank, privacy: privacy) { self.picked = nil }
                         .id(picked.id)
                 } else if let evidence {
                     EvidenceView(evidence: evidence) { self.evidence = nil }
@@ -138,7 +138,7 @@ struct LiveView: View {
             Text(live.model?.name ?? "No check running").font(.system(size: 14, weight: .semibold, design: .monospaced))
             Text([live.model?.quantisation, live.model?.runtime?.name, live.model.map { kindWord($0.provider) }].compactMap { $0 }.joined(separator: " · "))
             if let hash = live.model?.sha256 { Text("files pinned · sha256 \(hash.prefix(8))…\(hash.suffix(4))") }
-            if let bank = live.bank { Text("questions \(bank.version) · signature verified") }
+            if let bank = live.bank { Text("questions \(bank.version) · " + (live.bankVerified ? "signature verified" : "draft, not yet signed")) }
         }
         .opacity(0.75)
     }
@@ -222,7 +222,8 @@ struct LiveView: View {
     /// quick check), shown here as it runs.
     private func rescan() {
         guard let entry = rescanEntry else { return }
-        let mode: RunMode = live.profile?.run.kind == .full ? .full : .quick
+        let kind = live.profile?.run.kind ?? live.mode
+        let mode: RunMode = kind == .full || kind == .analysis ? kind : .quick
         cardHidden = false
         evidence = nil
         picked = nil
@@ -258,6 +259,7 @@ struct LiveView: View {
         case .candour: "Candour"
         case .dialogue: "Conversations"
         case .work: "Work"
+        case .analysis: "Analysis"
         }
     }
 }

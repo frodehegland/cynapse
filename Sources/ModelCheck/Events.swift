@@ -38,6 +38,8 @@ public extension Scorer.Outcome {
             return "Labelled how two passages relate: \(detail.label ?? "no label")."
         case .coverage:
             return "Gave \(detail.positionsGiven?.count ?? 0) of \(item.scoring.positions?.count ?? 0) main positions on a contested question."
+        case .analysis:
+            return Analysis.plainText(item, detail)
         case .choiceLikelihood:
             if (detail.declinedWordings ?? 0) > 0, (detail.wordingScores ?? []).isEmpty { return "Wouldn't take a position on a statement." }
             let scores = detail.wordingScores ?? []

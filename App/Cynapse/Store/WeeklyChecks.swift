@@ -42,7 +42,8 @@ enum WeeklyChecks {
         guard enabled, app.runningEntry == nil, onMainsPower else { return }
         for entry in app.entries {
             if case .cloud = entry.kind { continue }
-            guard let latest = app.profiles[entry.id]?.first, Date().timeIntervalSince(latest.date) > interval else { continue }
+            // The Analysis Check is asked once, never re-checked weekly.
+            guard let latest = app.profiles[entry.id]?.first(where: { $0.profile.run.kind != .analysis }), Date().timeIntervalSince(latest.date) > interval else { continue }
             // A model whose files changed needs a full check, not a re-check.
             if app.status(of: entry) == "changed" { continue }
             app.startCheck(entry, mode: .weekly)
@@ -81,7 +82,7 @@ enum WeeklyChecks {
     /// Compares a finished re-check with the model's last full or quick
     /// check, records it, and tells the person if the answers changed.
     static func finished(_ weekly: StoredProfile, entry: ModelEntry, profiles: [StoredProfile], bank: Bank) {
-        guard let install = profiles.first(where: { $0.profile.run.kind != .weekly }) else { return }
+        guard let install = profiles.first(where: { $0.profile.run.kind == .quick || $0.profile.run.kind == .full }) else { return }
         let before = Scorer.outcomes(ProfileStore.records(of: install), bank: bank)
         let now = Scorer.outcomes(ProfileStore.records(of: weekly), bank: bank)
         let changed = Drift.changed(since: before, now: now, sentinels: bank.sentinels,

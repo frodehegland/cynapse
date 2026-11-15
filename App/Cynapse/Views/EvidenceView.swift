@@ -65,7 +65,7 @@ struct EvidenceView: View {
 
     /// The questions, those that went wrong first.
     private func ordered(_ byItem: [String: [Record]]) -> [String] {
-        let rank: (String) -> Assessment = { id in plainOutcome(id, byItem[id] ?? [])?.assessment(item: app.bank?.item(id)) ?? .neutral }
+        let rank: (String) -> Assessment = { id in plainOutcome(id, byItem[id] ?? [])?.assessment(item: app.lookupBank?.item(id)) ?? .neutral }
         return evidence.ids.filter { byItem[$0] != nil }.sorted { rank($0) < rank($1) }
     }
 
@@ -80,7 +80,7 @@ struct EvidenceView: View {
 
     /// The question as asked plainly, the first time.
     private func plainOutcome(_ id: String, _ records: [Record]) -> Scorer.Outcome? {
-        guard let bank = app.bank else { return nil }
+        guard let bank = app.lookupBank else { return nil }
         let plain = records.filter { $0.ask.pass == 1 && isPlain($0.ask.condition) }
         return Scorer.outcomes(plain.isEmpty ? records : plain, bank: bank).first
     }
@@ -91,7 +91,7 @@ struct EvidenceView: View {
 
     @ViewBuilder
     private func itemBlock(_ id: String, _ records: [Record]) -> some View {
-        let item = app.bank?.item(id)
+        let item = app.lookupBank?.item(id)
         let outcome = plainOutcome(id, records)
         let rating = outcome?.assessment(item: item) ?? .neutral
         let groups = Dictionary(grouping: records) { "\($0.ask.condition.id)|\($0.ask.pass)" }
