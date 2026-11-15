@@ -318,6 +318,7 @@ public enum AnalysisBuilder {
             }
         }
         if let agreement = profile.judgeAgreement { add("The judges agreed on \(agreement.agreed) of \(agreement.asked) readings.", heading: "Judges") }
+        lines += profile.reviewLines()
         let day = ISO8601DateFormatter().date(from: profile.createdAt).map { $0.formatted(date: .long, time: .omitted) } ?? profile.createdAt
         add("Analysis Check on \(day): \(profile.run.prompts) passages given.", heading: "Check")
         if profile.bank.unsigned == true {

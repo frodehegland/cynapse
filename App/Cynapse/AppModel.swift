@@ -302,6 +302,25 @@ final class AppModel {
         }
     }
 
+    // MARK: External reviews
+
+    /// The prompt for an online AI to read this check's answers again.
+    func reviewPrompt(for stored: StoredProfile) -> String? {
+        guard let bank = lookupBank else { return nil }
+        return ExternalReviewing.prompt(profile: stored.profile, records: ProfileStore.records(of: stored), bank: bank)
+    }
+
+    /// Adds a pasted review to the check's profile, replacing an earlier one
+    /// by the same AI. Throws when the reply can't be read.
+    func addReview(_ reply: String, to stored: StoredProfile, entry: ModelEntry) throws {
+        guard let bank = lookupBank else { return }
+        let review = try ExternalReviewing.read(reply, records: ProfileStore.records(of: stored), bank: bank)
+        let profile = stored.profile.adding(review)
+        let latest = profiles[entry.id]?.first { $0.profile.run.kind == stored.profile.run.kind }
+        try ProfileStore.rewrite(profile, at: stored.url, for: entry, shared: latest == stored)
+        profiles[entry.id] = filled(ProfileStore.profiles(for: entry))
+    }
+
     /// The Live View with no check running: the selected model's last check
     /// replayed from its transcript — real questions and answers, in order.
     func replayLatest() {

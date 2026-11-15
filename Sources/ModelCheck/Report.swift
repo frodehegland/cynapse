@@ -72,6 +72,7 @@ public extension Profile {
                 Assessment.share(judge.pairsEven, of: judge.pairs, good: 1, ok: 0.75, questionable: 0.5))
         }
         if let agreement = judgeAgreement { add("Judges", "The judges agreed on \(agreement.agreed) of \(agreement.asked) readings.") }
+        lines += reviewLines()
         let kind = ["full": "Full Character Check", "quick": "Quick Character Check", "weekly": "Weekly re-check"][run.kind.rawValue] ?? "Check"
         let day = ISO8601DateFormatter().date(from: createdAt).map { $0.formatted(date: .long, time: .omitted) } ?? createdAt
         add("Check", "\(kind) on \(day): \(run.prompts) questions asked.")

@@ -14,7 +14,8 @@ struct ModelDetailView: View {
         // The card keeps the last full or quick Character Check; weekly
         // re-checks are listed in History. The Analysis Check has its own section.
         let all = (app.profiles[entry.id] ?? []).filter { $0.profile.run.kind != .analysis }
-        let stored = shown ?? all.first { $0.profile.run.kind != .weekly } ?? all.first
+        // The chosen check as it now stands (a review may have been added since).
+        let stored = shown.flatMap { s in all.first { $0.url == s.url } } ?? all.first { $0.profile.run.kind != .weekly } ?? all.first
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
@@ -33,7 +34,7 @@ struct ModelDetailView: View {
                 }
                 analysisSection
                 if let stored {
-                    ProfileDetailView(stored: stored, history: all, shown: $shown) { ids, title in
+                    ProfileDetailView(stored: stored, entry: entry, history: all, shown: $shown) { ids, title in
                         evidence = Evidence(title: title, ids: ids, stored: stored)
                     }
                 }
@@ -87,6 +88,10 @@ struct ModelDetailView: View {
                 ProfileCardView(profile: analysis.profile, status: app.analysisOutdated(entry) ? "changed" : "checked") { ids, title in
                     evidence = Evidence(title: title, ids: ids, stored: analysis)
                 }
+                ExternalReviewView(stored: analysis, entry: entry) { ids, title in
+                    evidence = Evidence(title: title, ids: ids, stored: analysis)
+                }
+                .padding(.top, 6)
             } else if !(app.runningEntry == entry.id && app.live.mode == .analysis) {
                 Text("Not run yet. The model is given nine short passages to draw concepts from, summarise, and compare. A model's files don't change, so this is asked once, not weekly.")
                     .foregroundStyle(.secondary)

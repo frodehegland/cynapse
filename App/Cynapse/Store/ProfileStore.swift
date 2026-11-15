@@ -79,6 +79,15 @@ enum ProfileStore {
         return stored
     }
 
+    /// Writes a profile again after something was added to it (a review);
+    /// the shared copy too, when it is the newest of its kind.
+    static func rewrite(_ profile: Profile, at url: URL, for entry: ModelEntry, shared: Bool) throws {
+        try profile.jsonData().write(to: url)
+        guard shared, let folder = ModelLibrary.sharedProfilesFolder else { return }
+        let suffix = profile.run.kind == .analysis ? "analysis" : "modelcheck"
+        try? profile.jsonData().write(to: folder.appendingPathComponent("\(sharedName(entry)).\(suffix).json"))
+    }
+
     static func sharedName(_ entry: ModelEntry) -> String {
         entry.name.replacingOccurrences(of: "/", with: "--")
     }

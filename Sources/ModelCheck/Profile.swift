@@ -30,6 +30,9 @@ public struct Profile: Codable, Sendable {
     public var report: [String]? = nil
     /// What an Analysis Check found (Analysis.swift); nil for other checks.
     public var analysis: AnalysisFindings? = nil
+    /// Second readings pasted from online AIs the person trusts
+    /// (ExternalReview.swift), each reviewer's kept apart; nil when none.
+    public var externalReviews: [ExternalReview]? = nil
 
     public struct BankInfo: Codable, Sendable {
         public var id, version, kind: String

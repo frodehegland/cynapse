@@ -8,6 +8,7 @@ import ModelCheck
 struct ProfileDetailView: View {
     @Environment(AppModel.self) private var app
     let stored: StoredProfile
+    let entry: ModelEntry
     let history: [StoredProfile]
     @Binding var shown: StoredProfile?
     var open: ([String], String) -> Void
@@ -59,6 +60,7 @@ struct ProfileDetailView: View {
             section("What this can't tell you") {
                 ForEach(profile.limits, id: \.self) { Text("• " + $0).foregroundStyle(.secondary) }
             }
+            ExternalReviewView(stored: stored, entry: entry, open: open)
             section("History") {
                 let watch = WeeklyChecks.watchLog(for: app.entries.first { app.profiles[$0.id]?.contains(stored) == true } ?? ModelEntry(kind: .apple, name: ""))
                 if let last = watch.last {

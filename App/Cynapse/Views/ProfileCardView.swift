@@ -33,11 +33,26 @@ struct ProfileCardView: View {
             ForEach(Array(profile.reportLines().enumerated()), id: \.offset) { index, line in
                 let lines = profile.reportLines()
                 let showHeading = index == 0 || lines[index - 1].heading != line.heading
+                // Which external AIs read answers under this heading, and on
+                // this line, differently from Cynapse: named, so it is plain who thought what.
+                let reviewed = line.heading != "Reviews"
+                let headingReviewers = showHeading && reviewed
+                    ? profile.reviewers(differingOn: lines.filter { $0.heading == line.heading }.flatMap(\.items)) : []
+                let lineReviewers = reviewed ? profile.reviewers(differingOn: line.items) : []
                 Button { open(line.items, line.text) } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(showHeading ? line.heading : "")
-                            .font(.headline)
-                            .frame(width: 96, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(showHeading ? line.heading : "")
+                                .font(.headline)
+                            ForEach(headingReviewers, id: \.reviewer) { r in
+                                Label(r.reviewer, systemImage: "person.crop.circle.badge.exclamationmark")
+                                    .font(.caption2)
+                                    .foregroundStyle(Assessment.questionable.color)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .help("\(r.reviewer) read \(r.count) answer\(r.count == 1 ? "" : "s") under \(line.heading) differently from Cynapse")
+                            }
+                        }
+                        .frame(width: 96, alignment: .leading)
                         // Its rating: green good, yellow acceptable, orange
                         // questionable, red wrong or serious; a position on a
                         // contested question is never rated.
@@ -46,11 +61,19 @@ struct ProfileCardView: View {
                             .overlay(Circle().stroke(line.assessment == .neutral ? Color.secondary.opacity(0.5) : .clear, lineWidth: 1))
                             .frame(width: 8, height: 8)
                             .help(line.assessment.word.prefix(1).uppercased() + line.assessment.word.dropFirst())
-                        Text(line.text)
-                            .foregroundStyle(line.isSerious ? Assessment.wrong.color : Color.primary)
-                            .underline(!line.items.isEmpty, pattern: .dot, color: Color.secondary.opacity(0.35))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(line.text)
+                                .foregroundStyle(line.isSerious ? Assessment.wrong.color : Color.primary)
+                                .underline(!line.items.isEmpty, pattern: .dot, color: Color.secondary.opacity(0.35))
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !lineReviewers.isEmpty {
+                                Text(lineReviewers.map { "\($0.reviewer) read \($0.count) differently" }.joined(separator: " · "))
+                                    .font(.caption)
+                                    .foregroundStyle(Assessment.questionable.color)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .contentShape(.rect)
                 }
