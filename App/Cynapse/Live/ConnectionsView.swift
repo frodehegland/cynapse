@@ -217,6 +217,7 @@ struct ConnectionsView: View {
         .candour: Point3(x: 0.55, y: -0.35, z: 0.3),
         .dialogue: Point3(x: 0.45, y: 0.45, z: -0.3),
         .work: Point3(x: -0.35, y: 0.5, z: -0.2),
+        .analysis: Point3(x: 0, y: 0, z: 0),
     ]
 
     /// One cloud for the whole check, each kind of question leaning toward
@@ -289,7 +290,7 @@ struct ConnectionsView: View {
             for other in near where other.id > item.id {
                 let (a, da) = project(p), (b, db) = project(itemPoints[other.id]!)
                 let lit = asked.contains(item.id) && asked.contains(other.id)
-                stroke(&context, a, b, questionColor.opacity(loose * (lit ? 0.55 : 0.08) * (0.35 + 0.65 * (da + db) / 2)), width: lit ? 0.8 : 0.5)
+                stroke(&context, a, b, questionColor.opacity(loose * (lit ? 0.7 : 0.12) * (0.35 + 0.65 * (da + db) / 2)), width: lit ? 0.8 : 0.5)
             }
         }
 
@@ -303,13 +304,13 @@ struct ConnectionsView: View {
             let answerColor = ratings[exchange.outcomeKey]?.color ?? pendingColor
             let depth = 0.3 + 0.7 * (qd + ad) / 2
             // Blue at the question, orange at the answer.
-            gradientStroke(&context, qp, ap, from: questionColor.opacity((fresh ? 0.8 : 0.3) * depth),
-                           to: answerColor.opacity((fresh ? 0.9 : 0.4) * depth), width: fresh ? 1.3 : 0.6)
+            gradientStroke(&context, qp, ap, from: questionColor.opacity((fresh ? 0.9 : 0.42) * depth),
+                           to: answerColor.opacity((fresh ? 1 : 0.55) * depth), width: fresh ? 1.3 : 0.6)
             if let (previous, pd) = lastAnswer[exchange.itemId] {
-                stroke(&context, previous, ap, answerColor.opacity(0.14 * (0.3 + 0.7 * (pd + ad) / 2)), width: 0.45)
+                stroke(&context, previous, ap, answerColor.opacity(0.2 * (0.3 + 0.7 * (pd + ad) / 2)), width: 0.45)
             }
             lastAnswer[exchange.itemId] = (ap, ad)
-            glow(&context, ap, depth: ad, color: answerColor, radius: fresh ? 2.6 : 1.3, bright: fresh ? 1 : 0.7)
+            glow(&context, ap, depth: ad, color: answerColor, radius: fresh ? 2.6 : 1.3, bright: fresh ? 1.15 : 0.85)
         }
 
         // The question being asked now: its thread reaching out as the
@@ -321,7 +322,7 @@ struct ConnectionsView: View {
             let tip = CGPoint(x: qp.x + (ap.x - qp.x) * grown, y: qp.y + (ap.y - qp.y) * grown)
             stroke(&context, qp, tip, pendingColor.opacity(0.9), width: 1.6)
             let pulse = 0.5 + 0.5 * sin(t * 5)
-            glow(&context, qp, depth: qd, color: questionColor, radius: 4 + 3 * pulse, bright: 1)
+            glow(&context, qp, depth: qd, color: questionColor, radius: 4 + 3 * pulse, bright: 1.15)
         }
 
         // The questions themselves: dim until asked.
@@ -329,7 +330,7 @@ struct ConnectionsView: View {
             guard let p = itemPoints[item.id] else { continue }
             let (sp, depth) = project(p)
             let lit = asked.contains(item.id)
-            glow(&context, sp, depth: depth, color: questionColor, radius: lit ? 3.2 : 1.6, bright: lit ? 1 : 0.3)
+            glow(&context, sp, depth: depth, color: questionColor, radius: lit ? 3.2 : 1.6, bright: lit ? 1.15 : 0.45)
         }
 
         // The dot shown in the panel, ringed; an answer's question too.
@@ -350,9 +351,9 @@ struct ConnectionsView: View {
                            project: (Point3) -> (CGPoint, Double), opacity: Double) {
         for bar in clusters.bars {
             let (a, _) = project(bar.from), (b, _) = project(bar.to)
-            stroke(&context, a, b, questionColor.opacity(0.45 * opacity), width: 1)
+            stroke(&context, a, b, questionColor.opacity(0.6 * opacity), width: 1)
             let mid = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
-            stroke(&context, CGPoint(x: mid.x, y: mid.y - 4), CGPoint(x: mid.x, y: mid.y + 4), questionColor.opacity(0.45 * opacity), width: 1)
+            stroke(&context, CGPoint(x: mid.x, y: mid.y - 4), CGPoint(x: mid.x, y: mid.y + 4), questionColor.opacity(0.6 * opacity), width: 1)
         }
         // The lean the profile reports: a position, so a neutral light.
         for tick in clusters.ticks {
@@ -402,10 +403,10 @@ struct ConnectionsView: View {
         let blur = 1 + (1 - depth) * 2
         let halo = radius * 2.4 * blur
         context.fill(Path(ellipseIn: CGRect(x: p.x - halo, y: p.y - halo, width: halo * 2, height: halo * 2)),
-                     with: .radialGradient(Gradient(colors: [color.opacity(0.3 * bright), color.opacity(0)]),
+                     with: .radialGradient(Gradient(colors: [color.opacity(0.4 * bright), color.opacity(0)]),
                                            center: p, startRadius: 0, endRadius: halo))
         let core = radius * (0.5 + 0.5 * depth)
         context.fill(Path(ellipseIn: CGRect(x: p.x - core, y: p.y - core, width: core * 2, height: core * 2)),
-                     with: .color(Color.white.opacity(0.85 * bright * (0.4 + 0.6 * depth))))
+                     with: .color(Color.white.opacity(min(1, 0.85 * bright) * (0.4 + 0.6 * depth))))
     }
 }
